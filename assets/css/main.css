@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cobalt: #0b3d91;
+  --cobalt-deep: #072a66;
+  --cream: #f5f0e6;
+  --pink: #e83e8c;
+  --emerald: #1f8a5f;
+  --reject: #c2185b;
+  --ink: #1a1a1a;
+  --admin-bg: #f3f5f8;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply antialiased;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cobalt-deep);
+  color: var(--cream);
+}
+
+@layer utilities {
+  .font-script {
+    font-family: 'Italianno', cursive;
+  }
+
+  .font-display {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+/* ── Home ↔ RSVP page transitions ── */
+.page-shell {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--cobalt-deep);
+}
+
+.page-layer {
+  position: relative;
+  z-index: 10;
+  min-height: 100dvh;
+}
+
+/* Gallery page is an empty shell — let clicks reach the globe underneath. */
+.page-layer--passthrough {
+  pointer-events: none;
+}
+
+.page-layer--passthrough :deep(a),
+.page-layer--passthrough :deep(button),
+.page-layer--passthrough :deep(input),
+.page-layer--passthrough :deep(textarea),
+.page-layer--passthrough :deep(select),
+.page-layer--passthrough :deep([role='button']) {
+  pointer-events: auto;
+}
+
+.slide-to-rsvp-enter-active,
+.slide-to-rsvp-leave-active,
+.slide-to-gallery-enter-active,
+.slide-to-gallery-leave-active {
+  transition:
+    opacity 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.slide-to-rsvp-leave-active,
+.slide-to-gallery-leave-active {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  z-index: 1;
+}
+
+.slide-to-rsvp-enter-active,
+.slide-to-gallery-enter-active {
+  z-index: 2;
+}
+
+/* Gallery → RSVP */
+.slide-to-rsvp-leave-to {
+  opacity: 0;
+  transform: scale(0.985);
+}
+
+.slide-to-rsvp-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.slide-to-rsvp-enter-to,
+.slide-to-rsvp-leave-from {
+  opacity: 1;
+  transform: none;
+}
+
+/* RSVP → Gallery */
+.slide-to-gallery-leave-to {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.slide-to-gallery-enter-from {
+  opacity: 0;
+  transform: scale(0.985);
+}
+
+.slide-to-gallery-enter-to,
+.slide-to-gallery-leave-from {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-to-rsvp-enter-active,
+  .slide-to-rsvp-leave-active,
+  .slide-to-gallery-enter-active,
+  .slide-to-gallery-leave-active {
+    transition-duration: 120ms;
+  }
+
+  .slide-to-rsvp-leave-to,
+  .slide-to-rsvp-enter-from,
+  .slide-to-gallery-leave-to,
+  .slide-to-gallery-enter-from {
+    transform: none;
+  }
+}

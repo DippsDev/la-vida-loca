@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0B3D91"/>
+      <stop offset="100%" stop-color="#0A4DB5"/>
+    </linearGradient>
+    <linearGradient id="pool" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1FB6FF"/>
+      <stop offset="50%" stop-color="#2EC4FF"/>
+      <stop offset="100%" stop-color="#0E8FD6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="1600" fill="url(#sky)"/>
+
+  <!-- ocean strip -->
+  <rect x="0" y="620" width="1200" height="70" fill="#08407A"/>
+  <path d="M0 655 Q150 640 300 655 T600 655 T900 655 T1200 655 V690 H0 Z" fill="#F5F0E6" opacity="0.35"/>
+
+  <!-- hedge -->
+  <rect x="0" y="680" width="1200" height="55" fill="#1F6B3A"/>
+  <ellipse cx="180" cy="705" rx="90" ry="28" fill="#248044"/>
+  <ellipse cx="420" cy="700" rx="110" ry="30" fill="#1C7A3E"/>
+  <ellipse cx="700" cy="708" rx="100" ry="26" fill="#248044"/>
+  <ellipse cx="980" cy="702" rx="120" ry="32" fill="#1C7A3E"/>
+
+  <!-- deck -->
+  <rect x="0" y="730" width="1200" height="870" fill="#EDE6D6"/>
+
+  <!-- pool -->
+  <rect x="120" y="860" width="960" height="520" fill="url(#pool)"/>
+  <rect x="120" y="860" width="960" height="28" fill="#D9D0BC"/>
+  <rect x="120" y="1352" width="960" height="28" fill="#D9D0BC"/>
+  <rect x="120" y="860" width="28" height="520" fill="#D9D0BC"/>
+  <rect x="1052" y="860" width="28" height="520" fill="#D9D0BC"/>
+
+  <!-- water shimmer -->
+  <path d="M180 980 Q300 960 420 985 T680 975 T980 990" fill="none" stroke="#B8ECFF" stroke-width="3" opacity="0.45"/>
+  <path d="M200 1100 Q360 1075 520 1110 T860 1095 T1020 1120" fill="none" stroke="#B8ECFF" stroke-width="2.5" opacity="0.35"/>
+  <path d="M220 1220 Q400 1195 580 1230 T920 1215" fill="none" stroke="#B8ECFF" stroke-width="2" opacity="0.3"/>
+
+  <!-- lounge chairs -->
+  <g fill="#F8F5EE" stroke="#C9C0AD" stroke-width="2">
+    <rect x="220" y="790" width="90" height="40" rx="2"/>
+    <rect x="340" y="790" width="90" height="40" rx="2"/>
+    <rect x="460" y="790" width="90" height="40" rx="2"/>
+    <rect x="580" y="790" width="90" height="40" rx="2"/>
+  </g>
+  <rect x="690" y="798" width="36" height="28" rx="2" fill="#F8F5EE" stroke="#C9C0AD" stroke-width="2"/>
+
+  <!-- pool ladder -->
+  <g stroke="#C9C0AD" stroke-width="4" fill="none">
+    <line x1="1000" y1="860" x2="1000" y2="980"/>
+    <line x1="1040" y1="860" x2="1040" y2="980"/>
+    <line x1="1000" y1="900" x2="1040" y2="900"/>
+    <line x1="1000" y1="940" x2="1040" y2="940"/>
+  </g>
+
+  <!-- flowering tree left -->
+  <g>
+    <path d="M160 730 C140 560 90 470 120 360 C160 420 210 480 230 560 C250 480 310 400 340 350 C360 470 320 590 300 730 Z" fill="#1F6B3A"/>
+    <circle cx="130" cy="390" r="18" fill="#E83E8C"/>
+    <circle cx="170" cy="360" r="14" fill="#F25AA0"/>
+    <circle cx="200" cy="410" r="16" fill="#E83E8C"/>
+    <circle cx="240" cy="370" r="12" fill="#D62878"/>
+    <circle cx="280" cy="400" r="15" fill="#E83E8C"/>
+    <circle cx="310" cy="360" r="13" fill="#F25AA0"/>
+    <circle cx="150" cy="450" r="12" fill="#D62878"/>
+    <circle cx="220" cy="450" r="14" fill="#E83E8C"/>
+    <circle cx="270" cy="470" r="11" fill="#F25AA0"/>
+  </g>
+
+  <!-- palm trunks -->
+  <path d="M560 700 C555 560 552 430 550 280" fill="none" stroke="#4A2E1A" stroke-width="10" stroke-linecap="round"/>
+  <path d="M610 700 C612 560 618 430 625 270" fill="none" stroke="#4A2E1A" stroke-width="9" stroke-linecap="round"/>
+  <path d="M660 700 C668 560 678 430 690 290" fill="none" stroke="#4A2E1A" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- palm fronds -->
+  <g fill="#1F8A5F">
+    <ellipse cx="500" cy="250" rx="110" ry="18" transform="rotate(-25 500 250)"/>
+    <ellipse cx="600" cy="230" rx="120" ry="16" transform="rotate(10 600 230)"/>
+    <ellipse cx="680" cy="255" rx="100" ry="15" transform="rotate(35 680 255)"/>
+    <ellipse cx="540" cy="290" rx="90" ry="14" transform="rotate(-40 540 290)"/>
+    <ellipse cx="650" cy="215" rx="95" ry="14" transform="rotate(-5 650 215)"/>
+    <ellipse cx="720" cy="280" rx="85" ry="13" transform="rotate(45 720 280)"/>
+    <ellipse cx="580" cy="200" rx="70" ry="12" transform="rotate(20 580 200)"/>
+  </g>
+
+  <!-- center bush -->
+  <ellipse cx="610" cy="700" rx="80" ry="35" fill="#248044"/>
+</svg>

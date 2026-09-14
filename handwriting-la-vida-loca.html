@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>La Vida Loca — Handwriting</title>
+  <style>
+    :root {
+      --ink: #3730a3;
+      --ink-glow: #818cf8;
+      --bg: #f8fafc;
+      --cycle: 8s;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; }
+
+    body {
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 42%, #e0e7ff 0%, transparent 60%),
+        var(--bg);
+      overflow: hidden;
+    }
+
+    .stage {
+      width: min(94vw, 1000px);
+    }
+
+    .signature {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+
+    .signature path {
+      fill: none;
+      stroke: var(--ink);
+      stroke-width: 3.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      /* pathLength="1" makes dash units normalized — reliable across browsers */
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      animation: handwrite var(--cycle) cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      filter: drop-shadow(0 1px 1px rgb(55 48 163 / 12%));
+    }
+
+    .signature .w1 { animation-delay: 0s; }
+    .signature .w2 { animation-delay: 0.65s; }
+    .signature .w3 { animation-delay: 1.85s; }
+    .signature .dot {
+      animation-delay: 1.55s;
+      stroke-width: 3.2;
+    }
+    .signature .flourish {
+      animation-delay: 3.05s;
+      stroke: var(--ink-glow);
+      stroke-width: 2.15;
+      opacity: 0.9;
+    }
+
+    @keyframes handwrite {
+      0%   { stroke-dashoffset: 1; opacity: 1; }
+      44%  { stroke-dashoffset: 0; opacity: 1; }
+      69%  { stroke-dashoffset: 0; opacity: 1; }
+      100% { stroke-dashoffset: 1; opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .signature path {
+        animation: none;
+        stroke-dashoffset: 0;
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage" role="img" aria-label="La Vida Loca written in live cursive handwriting">
+    <svg
+      class="signature"
+      viewBox="0 0 1000 320"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        class="w1"
+        pathLength="1"
+        d="M 64 220 C 66 170 70 110 78 78 C 84 54 108 44 128 58 C 144 70 146 96 132 118 C 118 140 92 150 74 140 C 102 124 140 96 172 82 C 198 70 228 78 234 110 C 240 146 220 186 184 196 C 158 204 138 186 144 162 C 150 138 180 132 202 146 C 218 156 230 172 238 182"
+      />
+      <path
+        class="w2"
+        pathLength="1"
+        d="M 300 82 C 318 118 334 168 340 214 C 350 168 370 108 402 84 C 418 72 440 78 444 102 C 448 128 430 152 406 156 C 428 132 458 104 490 92 C 506 86 520 98 516 118 C 512 140 492 154 474 146 C 498 128 530 108 566 98 C 592 90 620 102 618 134 C 616 172 586 204 546 198 C 520 194 510 170 520 152 C 530 134 560 132 580 148 C 596 160 606 176 612 186"
+      />
+      <path
+        class="dot"
+        pathLength="1"
+        d="M 498 64 C 500 60 506 60 508 64 C 510 68 506 72 502 70 C 498 68 496 66 498 64"
+      />
+      <path
+        class="w3"
+        pathLength="1"
+        d="M 680 220 C 682 170 686 110 694 78 C 700 54 724 44 744 58 C 760 70 762 96 748 118 C 734 140 708 150 690 140 C 718 124 752 100 786 90 C 810 82 832 98 826 128 C 820 162 790 182 762 170 C 790 150 824 132 856 126 C 878 122 896 138 888 162 C 880 186 850 196 830 178 C 856 164 892 148 928 146 C 952 144 972 160 966 184 C 960 210 932 224 908 214 C 924 202 946 196 966 204"
+      />
+      <path
+        class="flourish"
+        pathLength="1"
+        d="M 78 268 C 220 286 400 292 580 278 C 720 266 850 252 940 262 C 968 266 980 276 970 282"
+      />
+    </svg>
+  </div>
+</body>
+</html>
