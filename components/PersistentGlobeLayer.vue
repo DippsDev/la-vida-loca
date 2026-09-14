@@ -31,7 +31,7 @@ onMounted(() => {
       :images="GALLERY_IMAGES"
       overlay-blur-color="#072a66"
       :auto-spin="true"
-      :auto-spin-speed-deg="2"
+      :auto-spin-speed-deg="3.2"
       :auto-spin-delay-ms="700"
       grayscale
       @ready="liftVeil"

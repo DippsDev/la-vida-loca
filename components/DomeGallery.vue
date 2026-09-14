@@ -115,6 +115,77 @@ function getDataNumber(el: HTMLElement, name: string, fallback: number) {
   return Number.isFinite(n) ? n : fallback
 }
 
+function parseCssSize(value: string | undefined, fallback: number) {
+  if (!value) return fallback
+  const trimmed = value.trim()
+  if (trimmed.endsWith('px')) {
+    const n = Number.parseFloat(trimmed)
+    return Number.isFinite(n) ? n : fallback
+  }
+  if (trimmed.endsWith('vw')) {
+    const n = Number.parseFloat(trimmed)
+    return Number.isFinite(n) ? (n / 100) * window.innerWidth : fallback
+  }
+  if (trimmed.endsWith('vh')) {
+    const n = Number.parseFloat(trimmed)
+    return Number.isFinite(n) ? (n / 100) * window.innerHeight : fallback
+  }
+  const n = Number.parseFloat(trimmed)
+  return Number.isFinite(n) ? n : fallback
+}
+
+/** Keep the enlarged media square inside the viewport with comfortable margins. */
+function resolveOpenedImageSize(frameWidth: number, frameHeight: number) {
+  const margin = window.innerWidth < 768 ? 20 : 48
+  const maxW = Math.max(160, window.innerWidth - margin * 2)
+  const maxH = Math.max(160, window.innerHeight - margin * 2)
+  const maxSide = Math.min(maxW, maxH)
+
+  let width = parseCssSize(props.openedImageWidth, frameWidth)
+  let height = parseCssSize(props.openedImageHeight, frameHeight)
+
+  const scale = Math.min(1, maxSide / Math.max(width, height, 1))
+  width = Math.round(width * scale)
+  height = Math.round(height * scale)
+
+  return {
+    width: `${width}px`,
+    height: `${height}px`,
+  }
+}
+
+const lightboxSwipeStart = ref<{ x: number; y: number } | null>(null)
+
+function onLightboxTouchStart(e: TouchEvent) {
+  if (!isEnlarged.value || window.innerWidth >= 768) return
+  if (e.touches.length !== 1) return
+  const touch = e.touches[0]
+  lightboxSwipeStart.value = { x: touch.clientX, y: touch.clientY }
+}
+
+function onLightboxTouchEnd(e: TouchEvent) {
+  if (!isEnlarged.value || !lightboxSwipeStart.value || window.innerWidth >= 768) return
+  const touch = e.changedTouches[0]
+  if (!touch) {
+    lightboxSwipeStart.value = null
+    return
+  }
+
+  const dx = touch.clientX - lightboxSwipeStart.value.x
+  const dy = touch.clientY - lightboxSwipeStart.value.y
+  lightboxSwipeStart.value = null
+
+  // Horizontal swipe only — ignore taps and mostly-vertical gestures
+  if (Math.abs(dx) < 56) return
+  if (Math.abs(dx) < Math.abs(dy) * 1.15) return
+
+  navigateLightbox(dx < 0 ? 1 : -1)
+}
+
+function clearLightboxSwipe() {
+  lightboxSwipeStart.value = null
+}
+
 function buildItems(pool: ImageItem[], seg: number): DomeItem[] {
   const xCols = Array.from({ length: seg }, (_, i) => -37 + i * 2)
   const evenYs = [-8, -6, -4, -2, 0, 2, 4, 6, 8]
@@ -464,8 +535,12 @@ function openItemFromElement(el: HTMLElement) {
       overlay.removeEventListener('transitionend', onFirstEnd)
       const prevTransition = overlay.style.transition
       overlay.style.transition = 'none'
-      const tempWidth = props.openedImageWidth || `${frameR.width}px`
-      const tempHeight = props.openedImageHeight || `${frameR.height}px`
+
+      const { width: tempWidth, height: tempHeight } = resolveOpenedImageSize(
+        frameR.width,
+        frameR.height,
+      )
+
       overlay.style.width = tempWidth
       overlay.style.height = tempHeight
       const newRect = overlay.getBoundingClientRect()
@@ -473,8 +548,11 @@ function openItemFromElement(el: HTMLElement) {
       overlay.style.height = `${frameR.height}px`
       void overlay.offsetWidth
       overlay.style.transition = `left ${props.enlargeTransitionMs}ms ease, top ${props.enlargeTransitionMs}ms ease, width ${props.enlargeTransitionMs}ms ease, height ${props.enlargeTransitionMs}ms ease`
-      const centeredLeft = frameR.left - mainR.left + (frameR.width - newRect.width) / 2
-      const centeredTop = frameR.top - mainR.top + (frameR.height - newRect.height) / 2
+
+      // Center within the viewport (main), not the smaller guide frame
+      const centeredLeft = (mainR.width - newRect.width) / 2
+      const centeredTop = (mainR.height - newRect.height) / 2
+
       requestAnimationFrame(() => {
         overlay.style.left = `${centeredLeft}px`
         overlay.style.top = `${centeredTop}px`
@@ -529,6 +607,7 @@ function closeEnlarge() {
     focusedElRef.value = null
     isEnlarged.value = false
     lightboxIndex.value = -1
+    clearLightboxSwipe()
     rootRef.value.removeAttribute('data-enlarging')
     openingRef.value = false
     unlockScroll()
@@ -567,6 +646,7 @@ function closeEnlarge() {
   overlay.remove()
   isEnlarged.value = false
   lightboxIndex.value = -1
+  clearLightboxSwipe()
   rootRef.value.appendChild(animatingOverlay)
   void animatingOverlay.getBoundingClientRect()
   requestAnimationFrame(() => {
@@ -657,7 +737,10 @@ onMounted(() => {
     radius = clamp(radius, props.minRadius, props.maxRadius)
     lockedRadiusRef.value = Math.round(radius)
 
-    const viewerPad = Math.max(8, Math.round(minDim * props.padFactor))
+    const viewerPad = Math.max(
+      16,
+      Math.round(minDim * (w < 768 ? Math.min(props.padFactor, 0.08) : props.padFactor)),
+    )
     root.style.setProperty('--radius', `${lockedRadiusRef.value}px`)
     root.style.setProperty('--viewer-pad', `${viewerPad}px`)
     root.style.setProperty('--overlay-blur-color', props.overlayBlurColor)
@@ -839,6 +922,8 @@ onUnmounted(() => {
       <div
         ref="viewerRef"
         class="viewer"
+        @touchstart.passive="onLightboxTouchStart"
+        @touchend.passive="onLightboxTouchEnd"
       >
         <div
           ref="scrimRef"

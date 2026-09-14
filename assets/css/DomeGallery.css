@@ -47,7 +47,8 @@ main.sphere-main {
 @media (max-width: 767px) {
   .stage {
     perspective: calc(var(--radius) * 1.2);
-    perspective-origin: 50% 48%;
+    perspective-origin: 50% 50%;
+    transform: translateY(3.5vh);
   }
 }
 
@@ -94,7 +95,7 @@ main.sphere-main {
 @media (max-width: 767px) {
   .overlay {
     background-image: radial-gradient(
-      circle at 50% 48%,
+      circle at 50% 51%,
       rgba(235, 235, 235, 0) 56%,
       var(--overlay-blur-color, #120F17) 90%
     );
@@ -102,12 +103,12 @@ main.sphere-main {
 
   .overlay--blur {
     -webkit-mask-image: radial-gradient(
-      circle at 50% 48%,
+      circle at 50% 51%,
       rgba(235, 235, 235, 0) 62%,
       var(--overlay-blur-color, #120F17) 94%
     );
     mask-image: radial-gradient(
-      circle at 50% 48%,
+      circle at 50% 51%,
       rgba(235, 235, 235, 0) 62%,
       var(--overlay-blur-color, #120F17) 94%
     );
@@ -183,6 +184,8 @@ main.sphere-main {
 .viewer .frame {
   height: 100%;
   aspect-ratio: 1;
+  max-width: 100%;
+  max-height: 100%;
   border-radius: var(--enlarge-radius, 32px);
   display: flex;
 }
@@ -190,7 +193,8 @@ main.sphere-main {
 @media (max-aspect-ratio: 1/1) {
   .viewer .frame {
     height: auto;
-    width: 100%;
+    width: min(100%, calc(100dvh - (var(--viewer-pad) * 2)));
+    max-height: calc(100dvh - (var(--viewer-pad) * 2));
   }
 }
 
@@ -220,6 +224,8 @@ main.sphere-main {
     opacity 500ms ease;
   transform-origin: top left;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  max-width: calc(100vw - 40px);
+  max-height: calc(100dvh - 40px);
 }
 
 .viewer .enlarge img,
@@ -270,10 +276,30 @@ main.sphere-main {
 }
 
 @media (max-width: 767px) {
+  .viewer {
+    padding:
+      max(16px, env(safe-area-inset-top, 0px))
+      max(16px, env(safe-area-inset-right, 0px))
+      max(16px, env(safe-area-inset-bottom, 0px))
+      max(16px, env(safe-area-inset-left, 0px));
+  }
+
+  .viewer .frame {
+    width: min(100%, calc(100dvw - 32px), calc(100dvh - 32px));
+    height: auto;
+    max-height: calc(100dvh - 32px);
+    border-radius: 22px;
+  }
+
+  .viewer .enlarge {
+    border-radius: 22px;
+    max-width: calc(100dvw - 32px);
+    max-height: calc(100dvh - 32px);
+    touch-action: pan-y;
+  }
+
   .viewer .lightbox-nav {
-    width: 40px;
-    height: 40px;
-    font-size: 1.5rem;
+    display: none;
   }
 }
 

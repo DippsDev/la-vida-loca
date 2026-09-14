@@ -170,35 +170,36 @@ onUnmounted(() => {
 
 <template>
   <div class="min-h-screen bg-[#f3f5f8] text-ink">
-    <header class="bg-cobalt-deep px-6 py-8 text-cream">
-      <div class="mx-auto flex max-w-5xl items-end justify-between gap-4">
-        <div>
-          <p class="font-script text-3xl text-white">
+    <header class="bg-cobalt-deep px-4 py-6 text-cream sm:px-6 sm:py-8">
+      <div class="mx-auto flex max-w-5xl flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+        <div class="min-w-0">
+          <p class="font-script text-3xl leading-none text-white sm:text-4xl">
             La Vida
           </p>
-          <h1 class="font-display text-3xl font-extrabold tracking-[0.1em]">
+          <h1 class="mt-1 font-display text-2xl font-extrabold tracking-[0.1em] sm:text-3xl">
             LOCA · Admin
           </h1>
           <p class="mt-2 text-sm text-cream/70">
             Live request inbox
           </p>
-        </div>
-        <div class="flex flex-wrap items-center justify-end gap-2">
           <p
             v-if="auth.adminEmail"
-            class="hidden text-xs text-cream/60 sm:block"
+            class="mt-1 truncate text-xs text-cream/55"
           >
             {{ auth.adminEmail }}
           </p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
           <NuxtLink
             to="/home"
-            class="rounded-sm border border-cream/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-cream transition hover:border-cream hover:bg-cream/10"
+            class="rounded-sm border border-cream/40 px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-cream transition hover:border-cream hover:bg-cream/10 sm:px-4 sm:text-xs"
           >
-            View public page
+            Public page
           </NuxtLink>
           <button
             type="button"
-            class="rounded-sm border border-cream/25 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-cream/80 transition hover:border-cream hover:text-cream"
+            class="rounded-sm border border-cream/25 px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-cream/80 transition hover:border-cream hover:text-cream sm:px-4 sm:text-xs"
             @click="signOut"
           >
             Sign out
@@ -207,64 +208,72 @@ onUnmounted(() => {
       </div>
     </header>
 
-    <div class="mx-auto max-w-5xl px-6 py-8">
+    <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <p
         v-if="demoMode"
-        class="mb-6 rounded-sm border border-cobalt-deep/15 bg-cobalt-deep/5 px-4 py-3 text-sm text-cobalt-deep/80"
+        class="mb-6 rounded-sm border border-cobalt-deep/15 bg-cobalt-deep/5 px-3.5 py-3 text-xs leading-relaxed text-cobalt-deep/80 sm:px-4 sm:text-sm"
         role="status"
       >
         Showing demo placeholder requests for client preview. Approve/Reject updates this session only.
-        Connect Supabase in <code class="text-xs">.env</code> for a live inbox.
+        Connect Supabase in <code class="text-[11px] sm:text-xs">.env</code> for a live inbox.
       </p>
 
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div class="rounded-sm bg-cobalt-deep px-4 py-4 text-white">
-          <p class="text-xs uppercase tracking-wider opacity-80">
+      <div class="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
+        <div class="rounded-sm bg-cobalt-deep px-3 py-3.5 text-white sm:px-4 sm:py-4">
+          <p class="text-[11px] uppercase tracking-wider opacity-80 sm:text-xs">
             Total
           </p>
-          <p class="mt-1 font-display text-3xl font-bold">
+          <p class="mt-1 font-display text-2xl font-bold sm:text-3xl">
             {{ totals.total }}
           </p>
         </div>
-        <div class="rounded-sm bg-white px-4 py-4 text-cobalt-deep">
-          <p class="text-xs uppercase tracking-wider opacity-70">
+        <div class="rounded-sm border border-cobalt-deep/10 bg-white px-3 py-3.5 text-cobalt-deep sm:px-4 sm:py-4">
+          <p class="text-[11px] uppercase tracking-wider opacity-70 sm:text-xs">
             Pending
           </p>
-          <p class="mt-1 font-display text-3xl font-bold">
+          <p class="mt-1 font-display text-2xl font-bold sm:text-3xl">
             {{ totals.pending }}
           </p>
         </div>
-        <div class="rounded-sm bg-palm px-4 py-4 text-white">
-          <p class="text-xs uppercase tracking-wider opacity-80">
+        <div class="rounded-sm bg-palm px-3 py-3.5 text-white sm:px-4 sm:py-4">
+          <p class="text-[11px] uppercase tracking-wider opacity-80 sm:text-xs">
             Approved
           </p>
-          <p class="mt-1 font-display text-3xl font-bold">
+          <p class="mt-1 font-display text-2xl font-bold sm:text-3xl">
             {{ totals.approved }}
           </p>
         </div>
-        <div class="rounded-sm bg-reject px-4 py-4 text-white">
-          <p class="text-xs uppercase tracking-wider opacity-80">
+        <div class="rounded-sm bg-reject px-3 py-3.5 text-white sm:px-4 sm:py-4">
+          <p class="text-[11px] uppercase tracking-wider opacity-80 sm:text-xs">
             Rejected
           </p>
-          <p class="mt-1 font-display text-3xl font-bold">
+          <p class="mt-1 font-display text-2xl font-bold sm:text-3xl">
             {{ totals.rejected }}
           </p>
         </div>
       </div>
 
-      <div class="mt-8 flex flex-wrap gap-2 border-b border-cobalt-deep/15 pb-3">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          type="button"
-          class="px-3 py-1.5 text-sm font-medium uppercase tracking-wide transition"
-          :class="filter === tab.id
-            ? 'bg-cobalt-deep text-white'
-            : 'bg-transparent text-cobalt-deep/70 hover:text-cobalt-deep'"
-          @click="filter = tab.id"
-        >
-          {{ tab.label }}
-        </button>
+      <div
+        class="mt-7 -mx-4 overflow-x-auto overscroll-x-contain border-b border-cobalt-deep/15 px-4 sm:mx-0 sm:mt-8 sm:overflow-visible sm:px-0"
+        role="tablist"
+        aria-label="Filter requests"
+      >
+        <div class="flex min-w-max gap-1 pb-3 sm:min-w-0 sm:flex-wrap sm:gap-2">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            type="button"
+            role="tab"
+            :aria-selected="filter === tab.id"
+            class="shrink-0 px-3 py-2 text-xs font-medium uppercase tracking-wide transition sm:text-sm"
+            :class="filter === tab.id
+              ? 'bg-cobalt-deep text-white'
+              : 'bg-transparent text-cobalt-deep/70 hover:text-cobalt-deep'"
+            @click="filter = tab.id"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
       </div>
 
       <p
@@ -284,18 +293,18 @@ onUnmounted(() => {
 
       <ul
         v-else
-        class="mt-6 divide-y divide-cobalt-deep/10 bg-white"
+        class="mt-5 divide-y divide-cobalt-deep/10 overflow-hidden rounded-sm bg-white sm:mt-6"
       >
         <li
           v-for="request in visible"
           :key="request.id"
-          class="flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between"
+          class="flex flex-col gap-3.5 px-4 py-4 sm:gap-3 md:flex-row md:items-center md:justify-between"
         >
-          <div>
+          <div class="min-w-0">
             <p class="font-semibold text-cobalt-deep">
               {{ request.name }}
             </p>
-            <p class="text-sm text-ink/70">
+            <p class="break-all text-sm text-ink/70">
               {{ request.email }}
             </p>
             <p
@@ -304,18 +313,18 @@ onUnmounted(() => {
             >
               “{{ request.note }}”
             </p>
-            <p class="mt-1 text-xs uppercase tracking-wider text-cobalt-deep/45">
+            <p class="mt-1 text-[11px] uppercase tracking-wider text-cobalt-deep/45 sm:text-xs">
               {{ request.status }} · {{ formatDate(request.created_at) }}
             </p>
           </div>
 
           <div
             v-if="request.status === 'PENDING'"
-            class="flex gap-2"
+            class="grid grid-cols-2 gap-2 md:flex md:shrink-0"
           >
             <button
               type="button"
-              class="bg-palm px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110 disabled:opacity-50"
+              class="bg-palm px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110 disabled:opacity-50 md:py-2"
               :disabled="updatingId === request.id"
               @click="setStatus(request.id, 'APPROVED')"
             >
@@ -323,7 +332,7 @@ onUnmounted(() => {
             </button>
             <button
               type="button"
-              class="bg-reject px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110 disabled:opacity-50"
+              class="bg-reject px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110 disabled:opacity-50 md:py-2"
               :disabled="updatingId === request.id"
               @click="setStatus(request.id, 'REJECTED')"
             >
