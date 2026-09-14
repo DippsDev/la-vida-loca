@@ -219,13 +219,17 @@ main.sphere-main {
   z-index: 30;
   border-radius: var(--enlarge-radius, 32px);
   overflow: hidden;
-  transition:
-    transform 500ms ease,
-    opacity 500ms ease;
   transform-origin: top left;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  max-width: calc(100vw - 40px);
-  max-height: calc(100dvh - 40px);
+  /* Sizing is driven by JS FLIP so CSS max-* doesn't break the zoom */
+  max-width: none;
+  max-height: none;
+}
+
+.sphere-root .enlarge-closing {
+  border-radius: var(--enlarge-radius, 32px);
+  overflow: hidden;
+  transform-origin: top left;
 }
 
 .viewer .enlarge img,
@@ -293,9 +297,11 @@ main.sphere-main {
 
   .viewer .enlarge {
     border-radius: 22px;
-    max-width: calc(100dvw - 32px);
-    max-height: calc(100dvh - 32px);
     touch-action: pan-y;
+  }
+
+  .sphere-root .enlarge-closing {
+    border-radius: 22px;
   }
 
   .viewer .lightbox-nav {

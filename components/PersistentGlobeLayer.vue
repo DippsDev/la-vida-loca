@@ -27,7 +27,9 @@ onMounted(() => {
     :class="{ 'persistent-globe--interactive': isInteractive }"
     aria-hidden="false"
   >
+    <!-- Hide the 3D sphere off /home so it can't stack above page content (RSVP form, etc.) -->
     <DomeGallery
+      v-show="isInteractive"
       :images="GALLERY_IMAGES"
       overlay-blur-color="#072a66"
       :auto-spin="true"

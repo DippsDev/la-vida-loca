@@ -63,19 +63,15 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div class="relative min-h-screen overflow-hidden">
+  <div class="relative min-h-screen bg-cobalt-deep">
     <SiteNavbar />
 
     <div
-      class="pointer-events-none absolute inset-0 bg-cobalt-deep/75 backdrop-blur-[2px]"
-      aria-hidden="true"
-    />
-    <div
-      class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgb(11_61_145/0.45),transparent_55%),linear-gradient(to_top,rgb(7_42_102/0.85)_0%,transparent_55%)]"
+      class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgb(11_61_145/0.55),transparent_55%),linear-gradient(to_top,rgb(7_42_102)_0%,transparent_50%)]"
       aria-hidden="true"
     />
 
-    <main class="rsvp-main relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 pb-14 pt-28 sm:px-6">
+    <main class="rsvp-main relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 pb-16 pt-28 sm:px-6 sm:pb-14">
       <p class="mb-5 text-center text-xs font-medium uppercase tracking-[0.22em] text-cream/90">
         Saturday · Private villa · By invitation
       </p>
@@ -108,7 +104,7 @@ async function onSubmit() {
         <form
           v-else
           key="form"
-          class="rounded-sm bg-cream/95 px-6 py-7 text-ink backdrop-blur-sm md:px-8"
+          class="rounded-sm bg-cream px-6 py-7 text-ink md:px-8"
           @submit.prevent="onSubmit"
         >
           <h1 class="font-display text-xl font-bold text-cobalt-deep">

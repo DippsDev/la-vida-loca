@@ -14,7 +14,7 @@ export const DEFAULTS = {
   segments: 34,
   dragDampening: 2,
   dragSensitivity: 20,
-  enlargeTransitionMs: 300,
+  enlargeTransitionMs: 380,
   autoSpinSpeedDeg: 2,
 }
 </script>
@@ -268,6 +268,7 @@ const scrollLockedRef = ref(false)
 const lockedRadiusRef = ref<number | null>(null)
 const lightboxIndex = ref(-1)
 const isEnlarged = ref(false)
+let autoSpinResumeTimer: number | null = null
 
 const mediaList = computed(() => normalizeMedia(props.images))
 const tileImages = computed(() => mediaList.value.filter(item => item.type === 'image'))
@@ -355,6 +356,30 @@ function stopAutoSpin() {
   }
 }
 
+function clearAutoSpinResume() {
+  if (autoSpinResumeTimer != null) {
+    window.clearTimeout(autoSpinResumeTimer)
+    autoSpinResumeTimer = null
+  }
+}
+
+/** Resume idle spin after drag/inertia — restarts the loop if it was stopped. */
+function scheduleAutoSpinResume(delayMs = 450) {
+  if (!props.autoSpin) return
+  clearAutoSpinResume()
+  autoSpinResumeTimer = window.setTimeout(() => {
+    autoSpinResumeTimer = null
+    if (!canAutoSpin() && (draggingRef.value || focusedElRef.value || openingRef.value)) return
+    // Inertia may still be winding down — wait until it's clear
+    if (inertiaRAF.value != null) {
+      scheduleAutoSpinResume(200)
+      return
+    }
+    if (draggingRef.value || focusedElRef.value || openingRef.value) return
+    startAutoSpin()
+  }, delayMs)
+}
+
 function startAutoSpin() {
   if (!props.autoSpin || autoSpinRAF.value != null) return
 
@@ -402,19 +427,25 @@ function startInertia(vx: number, vy: number) {
   let vY = clamp(vy, -MAX_V, MAX_V) * 80
   let frames = 0
   const d = clamp(props.dragDampening ?? 0.6, 0, 1)
-  const frictionMul = 0.94 + 0.055 * d
-  const stopThreshold = 0.015 - 0.01 * d
-  const maxFrames = Math.round(90 + 270 * d)
+  const frictionMul = 0.92 + 0.04 * d
+  // End sooner so residual micro-motion doesn't block auto-spin for seconds
+  const stopThreshold = 0.12 - 0.04 * d
+  const maxFrames = Math.round(45 + 90 * d)
+
+  const finishInertia = () => {
+    inertiaRAF.value = null
+    scheduleAutoSpinResume(350)
+  }
 
   const step = () => {
     vX *= frictionMul
     vY *= frictionMul
     if (Math.abs(vX) < stopThreshold && Math.abs(vY) < stopThreshold) {
-      inertiaRAF.value = null
+      finishInertia()
       return
     }
     if (++frames > maxFrames) {
-      inertiaRAF.value = null
+      finishInertia()
       return
     }
     const nextX = clamp(
@@ -430,6 +461,24 @@ function startInertia(vx: number, vy: number) {
 
   stopInertia()
   inertiaRAF.value = requestAnimationFrame(step)
+}
+
+function whenTransitionEnds(el: HTMLElement, property: string, ms: number, cb: () => void) {
+  let done = false
+  const finish = () => {
+    if (done) return
+    done = true
+    el.removeEventListener('transitionend', onEnd)
+    window.clearTimeout(timer)
+    cb()
+  }
+  const onEnd = (ev: TransitionEvent) => {
+    if (ev.target !== el) return
+    if (property && ev.propertyName !== property) return
+    finish()
+  }
+  el.addEventListener('transitionend', onEnd)
+  const timer = window.setTimeout(finish, ms + 80)
 }
 
 function openItemFromElement(el: HTMLElement) {
@@ -497,76 +546,57 @@ function openItemFromElement(el: HTMLElement) {
     type: 'image' as const,
   }
 
+  const { width: finalWidthCss, height: finalHeightCss } = resolveOpenedImageSize(
+    frameR.width,
+    frameR.height,
+  )
+  const finalWidth = Number.parseFloat(finalWidthCss)
+  const finalHeight = Number.parseFloat(finalHeightCss)
+  const centeredLeft = (mainR.width - finalWidth) / 2
+  const centeredTop = (mainR.height - finalHeight) / 2
+
   const overlay = document.createElement('div')
   overlay.className = 'enlarge'
-  overlay.style.position = 'absolute'
-  overlay.style.left = `${frameR.left - mainR.left}px`
-  overlay.style.top = `${frameR.top - mainR.top}px`
-  overlay.style.width = `${frameR.width}px`
-  overlay.style.height = `${frameR.height}px`
-  overlay.style.opacity = '0'
-  overlay.style.zIndex = '30'
-  overlay.style.willChange = 'transform, opacity'
-  overlay.style.transformOrigin = 'top left'
-  overlay.style.transition = `transform ${props.enlargeTransitionMs}ms ease, opacity ${props.enlargeTransitionMs}ms ease`
+  overlay.style.cssText = [
+    'position:absolute',
+    `left:${centeredLeft}px`,
+    `top:${centeredTop}px`,
+    `width:${finalWidth}px`,
+    `height:${finalHeight}px`,
+    'opacity:0',
+    'z-index:30',
+    'transform-origin:top left',
+    'transition:none',
+    'will-change:transform, opacity',
+    'max-width:none',
+    'max-height:none',
+  ].join(';')
+
+  const sx0 = tileR.width / Math.max(finalWidth, 1)
+  const sy0 = tileR.height / Math.max(finalHeight, 1)
+  const tx0 = tileR.left - mainR.left - centeredLeft
+  const ty0 = tileR.top - mainR.top - centeredTop
+  overlay.style.transform = `translate(${tx0}px, ${ty0}px) scale(${sx0}, ${sy0})`
+
   fillEnlargeOverlay(overlay, entry)
   viewerRef.value.appendChild(overlay)
   isEnlarged.value = true
+  void overlay.offsetWidth
 
-  const tx0 = tileR.left - frameR.left
-  const ty0 = tileR.top - frameR.top
-  const sx0 = tileR.width / frameR.width
-  const sy0 = tileR.height / frameR.height
-  const validSx0 = Number.isFinite(sx0) && sx0 > 0 ? sx0 : 1
-  const validSy0 = Number.isFinite(sy0) && sy0 > 0 ? sy0 : 1
-  overlay.style.transform = `translate(${tx0}px, ${ty0}px) scale(${validSx0}, ${validSy0})`
-
-  setTimeout(() => {
+  const ms = props.enlargeTransitionMs
+  const ease = 'cubic-bezier(0.22, 1, 0.36, 1)'
+  requestAnimationFrame(() => {
     if (!overlay.parentElement) return
+    overlay.style.transition = `transform ${ms}ms ${ease}, opacity ${ms}ms ease-out`
     overlay.style.opacity = '1'
     overlay.style.transform = 'translate(0px, 0px) scale(1, 1)'
     rootRef.value?.setAttribute('data-enlarging', 'true')
-  }, 16)
+  })
 
-  const wantsResize = props.openedImageWidth || props.openedImageHeight
-  if (wantsResize) {
-    const onFirstEnd = (ev: TransitionEvent) => {
-      if (ev.propertyName !== 'transform') return
-      overlay.removeEventListener('transitionend', onFirstEnd)
-      const prevTransition = overlay.style.transition
-      overlay.style.transition = 'none'
-
-      const { width: tempWidth, height: tempHeight } = resolveOpenedImageSize(
-        frameR.width,
-        frameR.height,
-      )
-
-      overlay.style.width = tempWidth
-      overlay.style.height = tempHeight
-      const newRect = overlay.getBoundingClientRect()
-      overlay.style.width = `${frameR.width}px`
-      overlay.style.height = `${frameR.height}px`
-      void overlay.offsetWidth
-      overlay.style.transition = `left ${props.enlargeTransitionMs}ms ease, top ${props.enlargeTransitionMs}ms ease, width ${props.enlargeTransitionMs}ms ease, height ${props.enlargeTransitionMs}ms ease`
-
-      // Center within the viewport (main), not the smaller guide frame
-      const centeredLeft = (mainR.width - newRect.width) / 2
-      const centeredTop = (mainR.height - newRect.height) / 2
-
-      requestAnimationFrame(() => {
-        overlay.style.left = `${centeredLeft}px`
-        overlay.style.top = `${centeredTop}px`
-        overlay.style.width = tempWidth
-        overlay.style.height = tempHeight
-      })
-      const cleanupSecond = () => {
-        overlay.removeEventListener('transitionend', cleanupSecond)
-        overlay.style.transition = prevTransition
-      }
-      overlay.addEventListener('transitionend', cleanupSecond, { once: true })
-    }
-    overlay.addEventListener('transitionend', onFirstEnd)
-  }
+  whenTransitionEnds(overlay, 'transform', ms, () => {
+    overlay.style.willChange = 'auto'
+    overlay.style.transition = ''
+  })
 }
 
 function onTileClick(e: MouseEvent) {
@@ -591,74 +621,15 @@ function closeEnlarge() {
   const el = focusedElRef.value
   if (!el || !rootRef.value || !viewerRef.value) return
   const parent = el.parentElement
-  const overlay = viewerRef.value.querySelector('.enlarge')
+  const overlay = viewerRef.value.querySelector('.enlarge') as HTMLElement | null
   if (!parent || !overlay) return
 
   const refDiv = parent.querySelector('.item__image--reference')
   const originalPos = originalTilePositionRef.value
+  const ms = props.enlargeTransitionMs
+  const ease = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
-  if (!originalPos) {
-    overlay.remove()
-    refDiv?.remove()
-    parent.style.setProperty('--rot-y-delta', '0deg')
-    parent.style.setProperty('--rot-x-delta', '0deg')
-    el.style.visibility = ''
-    el.style.zIndex = '0'
-    focusedElRef.value = null
-    isEnlarged.value = false
-    lightboxIndex.value = -1
-    clearLightboxSwipe()
-    rootRef.value.removeAttribute('data-enlarging')
-    openingRef.value = false
-    unlockScroll()
-    return
-  }
-
-  const currentRect = overlay.getBoundingClientRect()
-  const rootRect = rootRef.value.getBoundingClientRect()
-  const originalPosRelativeToRoot = {
-    left: originalPos.left - rootRect.left,
-    top: originalPos.top - rootRect.top,
-    width: originalPos.width,
-    height: originalPos.height,
-  }
-  const overlayRelativeToRoot = {
-    left: currentRect.left - rootRect.left,
-    top: currentRect.top - rootRect.top,
-    width: currentRect.width,
-    height: currentRect.height,
-  }
-
-  const animatingOverlay = document.createElement('div')
-  animatingOverlay.className = 'enlarge-closing'
-  animatingOverlay.style.cssText = `position:absolute;left:${overlayRelativeToRoot.left}px;top:${overlayRelativeToRoot.top}px;width:${overlayRelativeToRoot.width}px;height:${overlayRelativeToRoot.height}px;z-index:9999;border-radius: var(--enlarge-radius, 32px);overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:all ${props.enlargeTransitionMs}ms ease-out;pointer-events:none;margin:0;transform:none;`
-  const originalMedia = overlay.querySelector('img, video')
-  if (originalMedia) {
-    const media = originalMedia.cloneNode(true) as HTMLElement
-    media.style.cssText = 'width:100%;height:100%;object-fit:cover;'
-    if (media instanceof HTMLVideoElement) {
-      media.pause()
-      media.removeAttribute('controls')
-      media.muted = true
-    }
-    animatingOverlay.appendChild(media)
-  }
-  overlay.remove()
-  isEnlarged.value = false
-  lightboxIndex.value = -1
-  clearLightboxSwipe()
-  rootRef.value.appendChild(animatingOverlay)
-  void animatingOverlay.getBoundingClientRect()
-  requestAnimationFrame(() => {
-    animatingOverlay.style.left = `${originalPosRelativeToRoot.left}px`
-    animatingOverlay.style.top = `${originalPosRelativeToRoot.top}px`
-    animatingOverlay.style.width = `${originalPosRelativeToRoot.width}px`
-    animatingOverlay.style.height = `${originalPosRelativeToRoot.height}px`
-    animatingOverlay.style.opacity = '0'
-  })
-
-  const cleanup = () => {
-    animatingOverlay.remove()
+  const finishClose = () => {
     originalTilePositionRef.value = null
     refDiv?.remove()
     parent.style.transition = 'none'
@@ -673,7 +644,7 @@ function closeEnlarge() {
       rootRef.value?.removeAttribute('data-enlarging')
       requestAnimationFrame(() => {
         parent.style.transition = ''
-        el.style.transition = 'opacity 300ms ease-out'
+        el.style.transition = 'opacity 220ms ease-out'
         requestAnimationFrame(() => {
           el.style.opacity = '1'
           setTimeout(() => {
@@ -684,12 +655,79 @@ function closeEnlarge() {
               document.body.classList.remove('dg-scroll-lock')
               scrollLockedRef.value = false
             }
-          }, 300)
+            scheduleAutoSpinResume(300)
+          }, 220)
         })
       })
     })
   }
-  animatingOverlay.addEventListener('transitionend', cleanup, { once: true })
+
+  if (!originalPos) {
+    overlay.remove()
+    isEnlarged.value = false
+    lightboxIndex.value = -1
+    clearLightboxSwipe()
+    finishClose()
+    return
+  }
+
+  const currentRect = overlay.getBoundingClientRect()
+  const rootRect = rootRef.value.getBoundingClientRect()
+
+  const animatingOverlay = document.createElement('div')
+  animatingOverlay.className = 'enlarge-closing'
+  animatingOverlay.style.cssText = [
+    'position:absolute',
+    `left:${currentRect.left - rootRect.left}px`,
+    `top:${currentRect.top - rootRect.top}px`,
+    `width:${currentRect.width}px`,
+    `height:${currentRect.height}px`,
+    'z-index:9999',
+    'border-radius:var(--enlarge-radius, 32px)',
+    'overflow:hidden',
+    'box-shadow:0 10px 30px rgba(0,0,0,.35)',
+    'pointer-events:none',
+    'margin:0',
+    'transform-origin:top left',
+    'transition:none',
+    'will-change:transform, opacity',
+    'opacity:1',
+  ].join(';')
+
+  const originalMedia = overlay.querySelector('img, video')
+  if (originalMedia) {
+    const media = originalMedia.cloneNode(true) as HTMLElement
+    media.style.cssText = 'width:100%;height:100%;object-fit:cover;'
+    if (media instanceof HTMLVideoElement) {
+      media.pause()
+      media.removeAttribute('controls')
+      media.muted = true
+    }
+    animatingOverlay.appendChild(media)
+  }
+
+  overlay.remove()
+  isEnlarged.value = false
+  lightboxIndex.value = -1
+  clearLightboxSwipe()
+  rootRef.value.appendChild(animatingOverlay)
+  void animatingOverlay.offsetWidth
+
+  const tx = originalPos.left - currentRect.left
+  const ty = originalPos.top - currentRect.top
+  const sx = originalPos.width / Math.max(currentRect.width, 1)
+  const sy = originalPos.height / Math.max(currentRect.height, 1)
+
+  requestAnimationFrame(() => {
+    animatingOverlay.style.transition = `transform ${ms}ms ${ease}, opacity ${Math.round(ms * 0.85)}ms ease-out`
+    animatingOverlay.style.transform = `translate(${tx}px, ${ty}px) scale(${sx}, ${sy})`
+    animatingOverlay.style.opacity = '0'
+  })
+
+  whenTransitionEnds(animatingOverlay, 'transform', ms, () => {
+    animatingOverlay.remove()
+    finishClose()
+  })
 }
 
 const rootStyle = computed(() => ({
@@ -776,11 +814,12 @@ onMounted(() => {
 
   const gesture = new DragGesture(
     main,
-    ({ event, first, last, velocity = [0, 0], direction = [0, 0], movement }) => {
+    ({ event, first, last, canceled, velocity = [0, 0], direction = [0, 0], movement }) => {
       if (focusedElRef.value) return
 
       if (first) {
         stopInertia()
+        clearAutoSpinResume()
         const evt = event as PointerEvent
         draggingRef.value = true
         movedRef.value = false
@@ -808,8 +847,16 @@ onMounted(() => {
         applyTransform(nextX, nextY)
       }
 
-      if (last) {
+      if (last || canceled) {
         draggingRef.value = false
+        startPosRef.value = null
+
+        if (canceled) {
+          scheduleAutoSpinResume(400)
+          movedRef.value = false
+          return
+        }
+
         let [vMagX, vMagY] = velocity
         const [dirX, dirY] = direction
         let vx = vMagX * dirX
@@ -819,13 +866,30 @@ onMounted(() => {
           vx = clamp((mx / props.dragSensitivity) * 0.02, -1.2, 1.2)
           vy = clamp((my / props.dragSensitivity) * 0.02, -1.2, 1.2)
         }
-        if (Math.abs(vx) > 0.005 || Math.abs(vy) > 0.005) startInertia(vx, vy)
+        if (Math.abs(vx) > 0.005 || Math.abs(vy) > 0.005) {
+          startInertia(vx, vy)
+        }
+        else {
+          scheduleAutoSpinResume(450)
+        }
         if (movedRef.value) lastDragEndAt.value = performance.now()
         movedRef.value = false
       }
     },
     { eventOptions: { passive: true } },
   )
+
+  // Mobile safety: if the gesture never fires `last`, clear drag so auto-spin can resume
+  const endDragIfStuck = () => {
+    if (!draggingRef.value) return
+    draggingRef.value = false
+    startPosRef.value = null
+    scheduleAutoSpinResume(450)
+  }
+  main.addEventListener('pointerup', endDragIfStuck)
+  main.addEventListener('pointercancel', endDragIfStuck)
+  main.addEventListener('touchend', endDragIfStuck)
+  main.addEventListener('touchcancel', endDragIfStuck)
 
   const onKey = (e: KeyboardEvent) => {
     if (!isEnlarged.value && e.key !== 'Escape') return
@@ -849,6 +913,11 @@ onMounted(() => {
     ro.disconnect()
     gesture.destroy()
     window.removeEventListener('keydown', onKey)
+    main.removeEventListener('pointerup', endDragIfStuck)
+    main.removeEventListener('pointercancel', endDragIfStuck)
+    main.removeEventListener('touchend', endDragIfStuck)
+    main.removeEventListener('touchcancel', endDragIfStuck)
+    clearAutoSpinResume()
     stopInertia()
     stopAutoSpin()
     document.body.classList.remove('dg-scroll-lock')
