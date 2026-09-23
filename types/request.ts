@@ -1,19 +1,26 @@
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 export interface JoinRequest {
-  id: string
-  name: string
+  id: number
+  first_name: string
+  surname: string
   email: string
+  phone: string
+  age: number
   note: string | null
+  ticket_code: string
   status: RequestStatus
   created_at: string
+  decided_at: string | null
 }
 
 export type JoinRequestInsert = {
-  name: string
+  first_name: string
+  surname: string
   email: string
+  phone: string
+  age: number
   note?: string | null
-  status?: RequestStatus
 }
 
 export type JoinRequestUpdate = {

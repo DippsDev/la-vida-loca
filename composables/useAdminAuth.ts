@@ -1,5 +1,33 @@
 type AuthMethod = 'supabase' | 'password'
 
+type AuthUser = {
+  email?: string | null
+  app_metadata?: Record<string, unknown>
+}
+
+/** Hosted Supabase rejects reserved domains such as .local, so the account is never saved. */
+const ADMIN_EMAIL_DOMAIN = 'lavidaloca.com'
+
+/** Supabase Auth signs in with email. The username is the mailbox name. */
+export function adminEmailFromUsername(username: string) {
+  const name = username.trim().toLowerCase()
+  if (!/^[a-z0-9][a-z0-9._-]{0,30}[a-z0-9]$/.test(name)) return null
+  return `${name}@${ADMIN_EMAIL_DOMAIN}`
+}
+
+function adminUsernameFromUser(user: AuthUser | null | undefined) {
+  const username = user?.app_metadata?.username
+  if (typeof username === 'string' && username.trim()) return username.trim()
+  const email = user?.email ?? ''
+  const name = email.split('@')[0]
+  return name || null
+}
+
+function isAdminUser(user: AuthUser | null | undefined) {
+  if (user?.app_metadata?.role === 'admin') return true
+  return (user?.email ?? '').toLowerCase().endsWith(`@${ADMIN_EMAIL_DOMAIN}`)
+}
+
 export function useAdminAuth() {
   const config = useRuntimeConfig()
 
@@ -7,22 +35,11 @@ export function useAdminAuth() {
   const isAuthenticated = useState('admin-auth-ok', () => false)
   const authMethod = useState<AuthMethod | null>('admin-auth-method', () => null)
   const adminEmail = useState<string | null>('admin-auth-email', () => null)
+  const adminUsername = useState<string | null>('admin-auth-username', () => null)
 
   const hasSupabase = computed(
     () => Boolean(config.public.supabaseUrl && config.public.supabaseAnonKey),
   )
-
-  const allowedEmails = computed(() =>
-    String(config.public.adminEmails || '')
-      .split(',')
-      .map(email => email.trim().toLowerCase())
-      .filter(Boolean),
-  )
-
-  function isAllowedEmail(email: string | undefined | null) {
-    if (!email || !allowedEmails.value.length) return false
-    return allowedEmails.value.includes(email.trim().toLowerCase())
-  }
 
   async function refreshPasswordSession() {
     try {
@@ -42,24 +59,25 @@ export function useAdminAuth() {
     return false
   }
 
+  function acceptAdmin(user: AuthUser | null | undefined) {
+    if (!isAdminUser(user)) return false
+    isAuthenticated.value = true
+    authMethod.value = 'supabase'
+    adminEmail.value = user?.email ?? null
+    adminUsername.value = adminUsernameFromUser(user)
+    ready.value = true
+    return true
+  }
+
   async function refreshSupabaseSession() {
     if (!hasSupabase.value) return false
 
     const supabase = useSupabaseClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    const email = session?.user?.email
+    const { data: { user } } = await supabase.auth.getUser()
 
-    if (session?.user && isAllowedEmail(email)) {
-      isAuthenticated.value = true
-      authMethod.value = 'supabase'
-      adminEmail.value = email ?? null
-      return true
-    }
+    if (acceptAdmin(user)) return true
 
-    if (session?.user && !isAllowedEmail(email)) {
-      await supabase.auth.signOut()
-    }
-
+    if (user) await supabase.auth.signOut()
     return false
   }
 
@@ -69,6 +87,7 @@ export function useAdminAuth() {
     isAuthenticated.value = false
     authMethod.value = null
     adminEmail.value = null
+    adminUsername.value = null
 
     const viaSupabase = await refreshSupabaseSession()
     if (!viaSupabase) {
@@ -78,31 +97,55 @@ export function useAdminAuth() {
     ready.value = true
   }
 
-  async function loginWithSupabase(email: string, password: string) {
+  function signupFailureMessage(message: string, code?: string) {
+    const detail = message.toLowerCase()
+    if (code === 'over_email_send_rate_limit' || detail.includes('rate limit')) {
+      return 'Supabase did not save that admin. Turn off Confirm email under Authentication → Providers → Email, wait a few minutes, then sign in again.'
+    }
+    if (code === 'email_address_invalid' || detail.includes('invalid')) {
+      return 'Supabase did not save that admin because it rejected the email address.'
+    }
+    return 'That username or PIN is not right.'
+  }
+
+  async function loginWithUsername(username: string, pin: string) {
     if (!hasSupabase.value) {
       throw new Error('Supabase sign-in is not configured.')
     }
-    if (!allowedEmails.value.length) {
-      throw new Error('No admin emails are configured.')
+
+    const email = adminEmailFromUsername(username)
+    const secret = pin.trim()
+    if (!email || secret.length < 6) {
+      throw new Error('Enter an admin username and a PIN of at least 6 characters.')
     }
 
     const supabase = useSupabaseClient()
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    })
+    const signedIn = await supabase.auth.signInWithPassword({ email, password: secret })
 
-    if (error) throw error
+    if (signedIn.error) {
+      const created = await supabase.auth.signUp({ email, password: secret })
+      if (created.error) {
+        throw new Error(signupFailureMessage(created.error.message, created.error.code))
+      }
+      const retry = await supabase.auth.signInWithPassword({ email, password: secret })
+      if (retry.error) {
+        const detail = retry.error.message.toLowerCase()
+        if (detail.includes('confirm')) {
+          throw new Error('That admin account is saved in Supabase Auth, but the email still needs to be confirmed before sign-in.')
+        }
+        throw new Error('That username or PIN is not right.')
+      }
+      if (!acceptAdmin(retry.data.user)) {
+        await supabase.auth.signOut()
+        throw new Error('This account is not authorized for admin access.')
+      }
+      return
+    }
 
-    if (!isAllowedEmail(data.user?.email)) {
+    if (!acceptAdmin(signedIn.data.user)) {
       await supabase.auth.signOut()
       throw new Error('This account is not authorized for admin access.')
     }
-
-    isAuthenticated.value = true
-    authMethod.value = 'supabase'
-    adminEmail.value = data.user?.email ?? null
-    ready.value = true
   }
 
   async function loginWithPassword(password: string) {
@@ -113,13 +156,6 @@ export function useAdminAuth() {
 
     isAuthenticated.value = true
     authMethod.value = 'password'
-    adminEmail.value = null
-    ready.value = true
-  }
-
-  function loginForShowcase() {
-    isAuthenticated.value = true
-    authMethod.value = null
     adminEmail.value = null
     ready.value = true
   }
@@ -142,6 +178,7 @@ export function useAdminAuth() {
     isAuthenticated.value = false
     authMethod.value = null
     adminEmail.value = null
+    adminUsername.value = null
     ready.value = true
   }
 
@@ -150,12 +187,11 @@ export function useAdminAuth() {
     isAuthenticated,
     authMethod,
     adminEmail,
+    adminUsername,
     hasSupabase,
-    allowedEmails,
     ensureReady,
-    loginWithSupabase,
+    loginWithUsername,
     loginWithPassword,
-    loginForShowcase,
     logout,
   }
 }

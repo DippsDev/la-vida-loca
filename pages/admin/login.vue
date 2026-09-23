@@ -7,13 +7,25 @@ useHead({ title: 'Admin sign in · La Vida LOCA' })
 
 const auth = useAdminAuth()
 
+const username = ref('')
+const pin = ref('')
 const submitting = ref(false)
+const errorMsg = ref('')
 
 async function onSubmit() {
+  errorMsg.value = ''
   submitting.value = true
-  auth.loginForShowcase()
-  await navigateTo('/admin')
-  submitting.value = false
+
+  try {
+    await auth.loginWithUsername(username.value, pin.value)
+    await navigateTo('/admin')
+  }
+  catch (error) {
+    errorMsg.value = error instanceof Error ? error.message : 'That username or PIN is not right.'
+  }
+  finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -41,8 +53,36 @@ async function onSubmit() {
         class="rounded-sm bg-cream/95 px-6 py-7 text-ink backdrop-blur-sm md:px-8"
         @submit.prevent="onSubmit"
       >
-        <p class="text-xs leading-relaxed text-ink/55">
-          Showcase mode — sign in to open the admin inbox.
+        <label class="block">
+          <span class="text-xs font-semibold uppercase tracking-wider text-ink/70">Admin Username</span>
+          <input
+            v-model="username"
+            type="text"
+            name="username"
+            required
+            autocomplete="username"
+            class="mt-1.5 w-full border border-cobalt-deep/20 bg-white px-3 py-2.5 text-sm text-ink outline-none transition focus:border-cobalt-deep"
+          >
+        </label>
+
+        <label class="mt-4 block">
+          <span class="text-xs font-semibold uppercase tracking-wider text-ink/70">Admin Pin</span>
+          <input
+            v-model="pin"
+            type="password"
+            name="pin"
+            required
+            autocomplete="current-password"
+            class="mt-1.5 w-full border border-cobalt-deep/20 bg-white px-3 py-2.5 text-sm text-ink outline-none transition focus:border-cobalt-deep"
+          >
+        </label>
+
+        <p
+          v-if="errorMsg"
+          class="mt-4 text-sm text-[#9c3048]"
+          role="alert"
+        >
+          {{ errorMsg }}
         </p>
 
         <button

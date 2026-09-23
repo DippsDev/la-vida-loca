@@ -38,11 +38,6 @@ useHead({ title: 'About · La Vida LOCA' })
           schedule, and the small rituals that turn a house into a home for a few days.
         </p>
 
-        <p class="rounded-sm border border-cobalt-deep/15 bg-cobalt-deep/5 px-4 py-3 text-xs leading-relaxed text-ink/60 sm:text-sm">
-          Placeholder copy for the showcase. Replace this section with your story, host notes, dress code,
-          travel tips, or anything else guests should know before they arrive.
-        </p>
-
         <div class="flex flex-wrap gap-3 pt-2">
           <NuxtLink
             to="/home"

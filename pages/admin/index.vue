@@ -16,6 +16,7 @@ const auth = useAdminAuth()
 const supabase = useSupabaseClient()
 const requests = ref<JoinRequest[]>([])
 const filter = ref<FilterTab>('ALL')
+const query = ref('')
 const loading = ref(true)
 const updatingId = ref<string | null>(null)
 const fetchError = ref('')
@@ -38,15 +39,59 @@ const totals = computed(() => {
   }
 })
 
+const searching = computed(() => query.value.trim().length > 0)
+
 const visible = computed(() => {
-  if (filter.value === 'ALL') return requests.value
-  return requests.value.filter(r => r.status === filter.value)
+  const q = query.value.trim().toLowerCase()
+  const qDigits = query.value.replace(/\D/g, '')
+  return requests.value.filter((request) => {
+    const inTab = filter.value === 'ALL' || request.status === filter.value
+    if (!q) return inTab
+    return guestMatches(request, q, qDigits)
+  })
+})
+
+function guestMatches(request: JoinRequest, q: string, qDigits: string) {
+  const fields = [
+    guestName(request),
+    request.email,
+    request.phone,
+    request.ticket_code,
+  ].join(' ').toLowerCase()
+  if (fields.includes(q)) return true
+  return qDigits.length >= 3 && request.phone.replace(/\D/g, '').includes(qDigits)
+}
+
+function admitLabel(status: RequestStatus) {
+  if (status === 'APPROVED') return 'Admit'
+  if (status === 'REJECTED') return 'Do not admit'
+  return 'Do not admit yet'
+}
+
+function guestName(request: JoinRequest) {
+  return `${request.first_name} ${request.surname}`.trim()
+}
+
+function statusLabel(status: RequestStatus) {
+  if (status === 'APPROVED') return 'Accepted'
+  if (status === 'REJECTED') return 'Rejected'
+  return 'Pending'
+}
+
+const emailListNote = computed(() => {
+  if (filter.value === 'APPROVED') {
+    return 'Accepted guests. Use this list for the acceptance emails.'
+  }
+  if (filter.value === 'REJECTED') {
+    return 'Declined guests. Use this list for the rejection emails.'
+  }
+  return ''
 })
 
 const tabs: { id: FilterTab; label: string }[] = [
   { id: 'ALL', label: 'All' },
   { id: 'PENDING', label: 'Pending' },
-  { id: 'APPROVED', label: 'Approved' },
+  { id: 'APPROVED', label: 'Accepted' },
   { id: 'REJECTED', label: 'Rejected' },
 ]
 
@@ -85,13 +130,12 @@ async function fetchRequests() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    loadDemoInbox()
-  }
-  else if (data?.length) {
-    requests.value = data
+    console.error(error)
+    fetchError.value = 'The inbox could not be loaded. Please try again.'
+    requests.value = []
   }
   else {
-    loadDemoInbox()
+    requests.value = data ?? []
   }
 
   loading.value = false
@@ -108,20 +152,22 @@ async function setStatus(id: string, status: Extract<RequestStatus, 'APPROVED' |
     return
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('requests')
     .update({ status })
     .eq('id', id)
+    .select('*')
+    .single()
 
   updatingId.value = null
 
   if (error) {
-    fetchError.value = error.message
+    console.error(error)
+    fetchError.value = 'That decision could not be saved. Please try again.'
     return
   }
 
-  const row = requests.value.find(r => r.id === id)
-  if (row) upsertLocal({ ...row, status })
+  if (data) upsertLocal(data)
 }
 
 function formatDate(value: string) {
@@ -183,10 +229,10 @@ onUnmounted(() => {
             Live request inbox
           </p>
           <p
-            v-if="auth.adminEmail"
+            v-if="auth.adminUsername"
             class="mt-1 truncate text-xs text-cream/55"
           >
-            {{ auth.adminEmail }}
+            {{ auth.adminUsername }}
           </p>
         </div>
 
@@ -214,14 +260,14 @@ onUnmounted(() => {
         class="mb-6 rounded-sm border border-cobalt-deep/15 bg-cobalt-deep/5 px-3.5 py-3 text-xs leading-relaxed text-cobalt-deep/80 sm:px-4 sm:text-sm"
         role="status"
       >
-        Showing demo placeholder requests for client preview. Approve/Reject updates this session only.
+        Showing demo placeholder requests for client preview. Accept/Reject updates this session only.
         Connect Supabase in <code class="text-[11px] sm:text-xs">.env</code> for a live inbox.
       </p>
 
       <div class="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
         <div class="rounded-sm bg-cobalt-deep px-3 py-3.5 text-white sm:px-4 sm:py-4">
           <p class="text-[11px] uppercase tracking-wider opacity-80 sm:text-xs">
-            Total
+            Total requests
           </p>
           <p class="mt-1 font-display text-2xl font-bold sm:text-3xl">
             {{ totals.total }}
@@ -237,7 +283,7 @@ onUnmounted(() => {
         </div>
         <div class="rounded-sm bg-palm px-3 py-3.5 text-white sm:px-4 sm:py-4">
           <p class="text-[11px] uppercase tracking-wider opacity-80 sm:text-xs">
-            Approved
+            Admits
           </p>
           <p class="mt-1 font-display text-2xl font-bold sm:text-3xl">
             {{ totals.approved }}
@@ -245,7 +291,7 @@ onUnmounted(() => {
         </div>
         <div class="rounded-sm bg-reject px-3 py-3.5 text-white sm:px-4 sm:py-4">
           <p class="text-[11px] uppercase tracking-wider opacity-80 sm:text-xs">
-            Rejected
+            Do not admit
           </p>
           <p class="mt-1 font-display text-2xl font-bold sm:text-3xl">
             {{ totals.rejected }}
@@ -253,8 +299,47 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <form
+        class="mt-7 sm:mt-8"
+        role="search"
+        @submit.prevent
+      >
+        <label
+          class="block text-[11px] font-semibold uppercase tracking-wider text-cobalt-deep/60 sm:text-xs"
+          for="guest-search"
+        >
+          Find a guest
+        </label>
+        <div class="mt-2 flex gap-2">
+          <input
+            id="guest-search"
+            v-model="query"
+            type="search"
+            enterkeyhint="search"
+            autocomplete="off"
+            placeholder="Name, ticket, email, or phone"
+            class="min-w-0 flex-1 border border-cobalt-deep/15 bg-white px-3 py-3 text-base text-cobalt-deep outline-none placeholder:text-cobalt-deep/35 focus:border-cobalt-deep"
+          >
+          <button
+            v-if="searching"
+            type="button"
+            class="shrink-0 border border-cobalt-deep/15 bg-white px-3 text-[11px] font-semibold uppercase tracking-wider text-cobalt-deep"
+            @click="query = ''"
+          >
+            Clear
+          </button>
+        </div>
+        <p
+          v-if="searching"
+          class="mt-2 text-sm text-cobalt-deep/70"
+        >
+          {{ visible.length === 1 ? '1 guest' : `${visible.length} guests` }}.
+          Match the name and age to their photo ID before they enter.
+        </p>
+      </form>
+
       <div
-        class="mt-7 -mx-4 overflow-x-auto overscroll-x-contain border-b border-cobalt-deep/15 px-4 sm:mx-0 sm:mt-8 sm:overflow-visible sm:px-0"
+        class="mt-5 -mx-4 overflow-x-auto overscroll-x-contain border-b border-cobalt-deep/15 px-4 sm:mx-0 sm:mt-6 sm:overflow-visible sm:px-0"
         role="tablist"
         aria-label="Filter requests"
       >
@@ -275,6 +360,13 @@ onUnmounted(() => {
           </button>
         </div>
       </div>
+
+      <p
+        v-if="emailListNote"
+        class="mt-6 text-sm text-cobalt-deep/70"
+      >
+        {{ emailListNote }}
+      </p>
 
       <p
         v-if="fetchError"
@@ -302,19 +394,31 @@ onUnmounted(() => {
         >
           <div class="min-w-0">
             <p class="font-semibold text-cobalt-deep">
-              {{ request.name }}
+              {{ guestName(request) }}
+            </p>
+            <p
+              v-if="searching && request.status === 'PENDING'"
+              class="mt-1 text-xs font-semibold uppercase tracking-wide text-cobalt-deep"
+            >
+              {{ admitLabel(request.status) }}
             </p>
             <p class="break-all text-sm text-ink/70">
               {{ request.email }}
             </p>
+            <p class="text-sm text-ink/70">
+              {{ request.phone }} · {{ request.age }}
+            </p>
             <p
               v-if="request.note"
-              class="mt-1 text-sm italic text-ink/55"
+              class="mt-0.5 text-sm text-ink/70"
             >
-              “{{ request.note }}”
+              {{ request.note }}
             </p>
             <p class="mt-1 text-[11px] uppercase tracking-wider text-cobalt-deep/45 sm:text-xs">
-              {{ request.status }} · {{ formatDate(request.created_at) }}
+              {{ statusLabel(request.status) }} · {{ request.ticket_code }} · {{ formatDate(request.created_at) }}
+              <template v-if="request.decided_at">
+                · decided {{ formatDate(request.decided_at) }}
+              </template>
             </p>
           </div>
 
@@ -328,7 +432,7 @@ onUnmounted(() => {
               :disabled="updatingId === request.id"
               @click="setStatus(request.id, 'APPROVED')"
             >
-              Approve
+              Accept
             </button>
             <button
               type="button"
@@ -347,7 +451,7 @@ onUnmounted(() => {
               ? 'bg-palm/15 text-palm'
               : 'bg-reject/15 text-reject'"
           >
-            {{ request.status }}
+            {{ searching ? admitLabel(request.status) : statusLabel(request.status) }}
           </span>
         </li>
 
@@ -355,7 +459,7 @@ onUnmounted(() => {
           v-if="!visible.length"
           class="px-4 py-10 text-center text-sm text-cobalt-deep/50"
         >
-          No requests in this view.
+          {{ searching ? 'No guest matches that search.' : 'No requests in this view.' }}
         </li>
       </ul>
     </div>

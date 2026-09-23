@@ -1,9 +1,7 @@
 <script lang="ts">
-import { GLOBE_PLACEHOLDER_IMAGES } from '~/utils/galleryPlaceholders'
+import { GLOBE_PLACEHOLDER_IMAGES, type ImageItem } from '~/utils/galleryPlaceholders'
 
-export type ImageItem =
-  | string
-  | { src: string; alt?: string; type?: 'image' | 'video' }
+export type { ImageItem }
 
 export const DEFAULT_IMAGES = GLOBE_PLACEHOLDER_IMAGES
 
@@ -103,6 +101,13 @@ const emit = defineEmits<{
 }>()
 
 const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
+
+/** iPhone SE portrait crop. Phones and iPad/tablet viewports share it; wide desktops do not. */
+function usesSeCrop(w: number, h: number) {
+  if (w < 768) return true
+  const aspect = w / h
+  return w <= 1400 && aspect >= 13 / 20 && aspect <= 20 / 13
+}
 const normalizeAngle = (d: number) => ((d % 360) + 360) % 360
 const wrapAngleSigned = (deg: number) => {
   const a = (((deg + 180) % 360) + 360) % 360
@@ -312,6 +317,42 @@ function createMediaNode(entry: MediaEntry) {
 function fillEnlargeOverlay(overlay: HTMLElement, entry: MediaEntry) {
   overlay.replaceChildren()
   overlay.appendChild(createMediaNode(entry))
+  syncPlaceholderMark(entry, overlay)
+}
+
+function isPlaceholderSrc(src: string) {
+  return src.startsWith('data:image/svg+xml')
+}
+
+function syncPlaceholderMark(entry: MediaEntry, overlay: HTMLElement) {
+  const viewer = viewerRef.value
+  if (!viewer) return
+
+  const existing = viewer.querySelector('.enlarge-mark')
+  if (!isPlaceholderSrc(entry.src)) {
+    existing?.remove()
+    return
+  }
+  if (existing) return
+
+  const mark = document.createElement('p')
+  mark.className = 'enlarge-mark'
+  mark.setAttribute('role', 'status')
+
+  const lineOne = document.createElement('span')
+  lineOne.textContent = 'Leave your mark on'
+  const lineTwo = document.createElement('span')
+  lineTwo.textContent = 'La Vida Loca'
+  mark.append(lineOne, lineTwo)
+
+  const left = Number.parseFloat(overlay.style.left) || 0
+  const top = Number.parseFloat(overlay.style.top) || 0
+  const width = Number.parseFloat(overlay.style.width) || overlay.offsetWidth
+  const height = Number.parseFloat(overlay.style.height) || overlay.offsetHeight
+  mark.style.left = `${left}px`
+  mark.style.top = `${top + height + 18}px`
+  mark.style.width = `${width}px`
+  viewer.appendChild(mark)
 }
 
 function resolveLightboxIndex(src: string) {
@@ -622,6 +663,7 @@ function closeEnlarge() {
   if (!el || !rootRef.value || !viewerRef.value) return
   const parent = el.parentElement
   const overlay = viewerRef.value.querySelector('.enlarge') as HTMLElement | null
+  viewerRef.value.querySelector('.enlarge-mark')?.remove()
   if (!parent || !overlay) return
 
   const refDiv = parent.querySelector('.item__image--reference')
@@ -753,31 +795,40 @@ onMounted(() => {
     const minDim = Math.min(w, h)
     const maxDim = Math.max(w, h)
     const aspect = w / h
-    let basis: number
-    switch (props.fitBasis) {
-      case 'min':
-        basis = minDim
-        break
-      case 'max':
-        basis = maxDim
-        break
-      case 'width':
-        basis = w
-        break
-      case 'height':
-        basis = h
-        break
-      default:
-        basis = aspect >= 1.3 ? w : minDim
+    const seCrop = usesSeCrop(w, h)
+    let radius: number
+    // iPhone SE portrait is a 600px sphere in a 375×667 screen.
+    // Scale that same crop to cover phones, iPads, and other tablets.
+    if (seCrop) {
+      radius = 600 * Math.max(w / 375, h / 667)
     }
-    let radius = basis * props.fit
-    radius = Math.min(radius, h * 1.35)
-    radius = clamp(radius, props.minRadius, props.maxRadius)
+    else {
+      let basis: number
+      switch (props.fitBasis) {
+        case 'min':
+          basis = minDim
+          break
+        case 'max':
+          basis = maxDim
+          break
+        case 'width':
+          basis = w
+          break
+        case 'height':
+          basis = h
+          break
+        default:
+          basis = aspect >= 1.3 ? w : minDim
+      }
+      radius = basis * props.fit
+      radius = Math.min(radius, h * 1.35)
+      radius = clamp(radius, props.minRadius, props.maxRadius)
+    }
     lockedRadiusRef.value = Math.round(radius)
 
     const viewerPad = Math.max(
       16,
-      Math.round(minDim * (w < 768 ? Math.min(props.padFactor, 0.08) : props.padFactor)),
+      Math.round(minDim * (seCrop ? Math.min(props.padFactor, 0.08) : props.padFactor)),
     )
     root.style.setProperty('--radius', `${lockedRadiusRef.value}px`)
     root.style.setProperty('--viewer-pad', `${viewerPad}px`)
