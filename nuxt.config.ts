@@ -10,8 +10,8 @@ export default defineNuxtConfig({
     adminPassword: process.env.NUXT_ADMIN_PASSWORD || '',
     adminSessionSecret: process.env.NUXT_ADMIN_SESSION_SECRET || '',
     public: {
-      supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL || '',
-      supabaseAnonKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL || 'https://pynxtrdndibgcxbnaeul.supabase.co',
+      supabaseAnonKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5bnh0cmRuZGliZ2N4Ym5hZXVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNjM3NTgsImV4cCI6MjEwNTczOTc1OH0.4-kFI2n1DC0hN_fzfigT4vr_Dtx3NKbEfUB450Eooa0',
       adminEmails: process.env.NUXT_PUBLIC_ADMIN_EMAILS || '',
     },
   },
@@ -25,6 +25,9 @@ export default defineNuxtConfig({
         },
       ],
       link: [
+        { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
+        { rel: 'icon', type: 'image/png', href: '/favicon-32.png', sizes: '32x32' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {
