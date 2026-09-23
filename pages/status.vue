@@ -33,6 +33,12 @@ async function lookup() {
 
   looking.value = true
 
+  if (!supabase) {
+    looking.value = false
+    errorMsg.value = 'We could not look up that email. Please try again.'
+    return
+  }
+
   const { data, error } = await supabase
     .from('requests')
     .select('*')

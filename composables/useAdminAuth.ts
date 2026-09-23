@@ -73,6 +73,7 @@ export function useAdminAuth() {
     if (!hasSupabase.value) return false
 
     const supabase = useSupabaseClient()
+    if (!supabase) return false
     const { data: { user } } = await supabase.auth.getUser()
 
     if (acceptAdmin(user)) return true
@@ -120,6 +121,9 @@ export function useAdminAuth() {
     }
 
     const supabase = useSupabaseClient()
+    if (!supabase) {
+      throw new Error('Supabase sign-in is not configured.')
+    }
     const signedIn = await supabase.auth.signInWithPassword({ email, password: secret })
 
     if (signedIn.error) {
@@ -163,7 +167,7 @@ export function useAdminAuth() {
   async function logout() {
     if (authMethod.value === 'supabase') {
       const supabase = useSupabaseClient()
-      await supabase.auth.signOut()
+      await supabase?.auth.signOut()
     }
 
     if (authMethod.value === 'password') {

@@ -69,6 +69,12 @@ async function onSubmit() {
 
   submitting.value = true
 
+  if (!supabase) {
+    submitting.value = false
+    errorMsg.value = 'We could not send your letter just now. Please try again later.'
+    return
+  }
+
   const { error } = await supabase.from('requests').insert({
     first_name: name.value.trim(),
     surname: surname.value.trim(),

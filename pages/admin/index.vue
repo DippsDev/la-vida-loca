@@ -124,6 +124,12 @@ async function fetchRequests() {
     return
   }
 
+  if (!supabase) {
+    loadDemoInbox()
+    loading.value = false
+    return
+  }
+
   const { data, error } = await supabase
     .from('requests')
     .select('*')
@@ -149,6 +155,12 @@ async function setStatus(id: string, status: Extract<RequestStatus, 'APPROVED' |
     const row = requests.value.find(r => r.id === id)
     if (row) upsertLocal({ ...row, status })
     updatingId.value = null
+    return
+  }
+
+  if (!supabase) {
+    updatingId.value = null
+    fetchError.value = 'That decision could not be saved. Please try again.'
     return
   }
 
@@ -187,6 +199,8 @@ onMounted(async () => {
 
   if (demoMode.value) return
 
+  if (!supabase) return
+
   channel = supabase
     .channel('requests-admin')
     .on(
@@ -208,7 +222,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (channel) {
+  if (channel && supabase) {
     supabase.removeChannel(channel)
   }
 })

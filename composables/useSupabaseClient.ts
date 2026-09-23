@@ -5,7 +5,9 @@ import type { Database } from '~/utils/supabase/database'
 
 export type { Database }
 
-export function useSupabaseClient(): SupabaseClient<Database> {
+export function useSupabaseClient(): SupabaseClient<Database> | null {
+  const config = useRuntimeConfig()
+  if (!config.public.supabaseUrl || !config.public.supabaseAnonKey) return null
   if (import.meta.server) return createServerClient()
   return createBrowserClient()
 }
