@@ -1,24 +1,5 @@
 <script setup lang="ts">
-import { GLOBE_TILE_SOURCES, SPLASH_BACKGROUNDS } from '~/utils/galleryPlaceholders'
-
-const splashBackgrounds = SPLASH_BACKGROUNDS
-
-const activeSlide = ref(0)
-const fadeMs = 1100
-const slideMs = 5500
-let slideTimer: ReturnType<typeof setInterval> | null = null
-let advancing = false
-
-function advanceSlide() {
-  if (advancing) return
-  advancing = true
-
-  activeSlide.value = (activeSlide.value + 1) % splashBackgrounds.length
-
-  window.setTimeout(() => {
-    advancing = false
-  }, fadeMs)
-}
+import { GLOBE_TILE_SOURCES } from '~/utils/galleryPlaceholders'
 
 const exiting = ref(false)
 
@@ -52,43 +33,17 @@ function enterSite() {
 }
 
 onMounted(() => {
-  slideTimer = setInterval(advanceSlide, slideMs)
   preloadGallery()
-})
-
-onUnmounted(() => {
-  if (slideTimer) clearInterval(slideTimer)
 })
 </script>
 
 <template>
-  <div class="relative min-h-screen overflow-hidden bg-cobalt-deep">
+  <div class="relative min-h-screen overflow-hidden bg-[#072a66]">
     <div
-      class="splash-shell fixed inset-0 z-50 flex flex-col items-center justify-center"
+      class="splash-shell fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#072a66]"
       :class="{ 'is-exiting': exiting }"
       aria-label="La Vida LOCA splash"
     >
-      <div
-        class="splash-video absolute inset-0"
-        aria-hidden="true"
-      >
-        <img
-          v-for="(src, index) in splashBackgrounds"
-          :key="src"
-          :src="src"
-          alt=""
-          class="absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out"
-          :class="activeSlide === index ? 'opacity-100' : 'opacity-0'"
-          :style="{ transitionDuration: `${fadeMs}ms` }"
-          decoding="async"
-          :loading="index === 0 ? 'eager' : 'lazy'"
-        >
-      </div>
-
-      <div
-        class="pointer-events-none absolute inset-0 bg-gradient-to-t from-cobalt-deep/85 via-cobalt-deep/35 to-cobalt-deep/30"
-        aria-hidden="true"
-      />
 
       <div class="splash-copy relative z-10 flex w-full flex-col items-center px-6 text-center">
         <HandwritingSignature />
@@ -109,12 +64,8 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.splash-video {
-  transform: scale(1);
-  opacity: 1;
-  transition:
-    opacity 280ms ease,
-    transform 280ms ease;
+.splash-shell {
+  transition: opacity 280ms ease;
 }
 
 .splash-copy {
@@ -125,9 +76,8 @@ onUnmounted(() => {
     transform 220ms ease;
 }
 
-.splash-shell.is-exiting .splash-video {
+.splash-shell.is-exiting {
   opacity: 0;
-  transform: scale(1.03);
 }
 
 .splash-shell.is-exiting .splash-copy {

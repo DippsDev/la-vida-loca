@@ -34,10 +34,3 @@ export const GALLERY_IMAGES: ImageItem[] = [...GLOBE_PLACEHOLDER_IMAGES]
 export const GLOBE_TILE_SOURCES = GLOBE_PLACEHOLDER_IMAGES.map((item) =>
   typeof item === 'string' ? item : item.src,
 )
-
-/** Grey backgrounds for the splash screen. */
-export const SPLASH_BACKGROUNDS = [
-  greyPlaceholder('#8a9099', 'Splash placeholder 1').src,
-  greyPlaceholder('#727882', 'Splash placeholder 2').src,
-  greyPlaceholder('#9aa0a8', 'Splash placeholder 3').src,
-]

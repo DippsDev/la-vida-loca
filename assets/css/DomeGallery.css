@@ -204,11 +204,11 @@ main.sphere-main {
   position: absolute;
   inset: 0;
   z-index: 10;
-  background: rgba(0, 0, 0, 0.4);
+  background: transparent;
   pointer-events: none;
   opacity: 0;
   transition: opacity 500ms ease;
-  backdrop-filter: blur(3px);
+  backdrop-filter: none;
 }
 
 .sphere-root[data-enlarging='true'] .viewer .scrim {
