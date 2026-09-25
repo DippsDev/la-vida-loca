@@ -28,6 +28,7 @@ type DomeItem = {
   sizeY: number
   src: string
   alt: string
+  type: 'image' | 'video'
 }
 
 type MediaEntry = {
@@ -90,7 +91,7 @@ const props = withDefaults(defineProps<{
   openedImageHeight: '400px',
   imageBorderRadius: '30px',
   openedImageBorderRadius: '30px',
-  grayscale: true,
+  grayscale: false,
   autoSpin: true,
   autoSpinSpeedDeg: DEFAULTS.autoSpinSpeedDeg,
   autoSpinDelayMs: 600,
@@ -192,7 +193,7 @@ function clearLightboxSwipe() {
   lightboxSwipeStart.value = null
 }
 
-function buildItems(pool: ImageItem[], seg: number): DomeItem[] {
+function buildItems(pool: MediaEntry[], seg: number): DomeItem[] {
   const xCols = Array.from({ length: seg }, (_, i) => -37 + i * 2)
   const evenYs = [-8, -6, -4, -2, 0, 2, 4, 6, 8]
   const oddYs = [-7, -5, -3, -1, 1, 3, 5, 7, 9]
@@ -204,37 +205,68 @@ function buildItems(pool: ImageItem[], seg: number): DomeItem[] {
 
   const totalSlots = coords.length
   if (pool.length === 0) {
-    return coords.map(c => ({ ...c, src: '', alt: '' }))
+    return coords.map(c => ({ ...c, src: '', alt: '', type: 'image' as const }))
   }
 
-  const normalizedImages = pool.map((image) => {
-    if (typeof image === 'string') return { src: image, alt: '' }
-    return { src: image.src || '', alt: image.alt || '' }
+  const images = pool.filter(item => item.type !== 'video')
+  const videos = pool.filter(item => item.type === 'video')
+  const stills = images.length > 0 ? images : pool
+  const rows = evenYs.length
+  const usedImages = scatterStills(stills, totalSlots, rows)
+
+  // A handful of clips, not one on every repeat, so the sphere stays light.
+  const videoSlots = [22, 74, 128, 186, 236, 286]
+  videoSlots.forEach((slot, index) => {
+    const clip = videos[index % videos.length]
+    if (!clip || slot >= usedImages.length) return
+    usedImages[slot] = clip
   })
-
-  const usedImages = Array.from(
-    { length: totalSlots },
-    (_, i) => normalizedImages[i % normalizedImages.length],
-  )
-
-  for (let i = 1; i < usedImages.length; i++) {
-    if (usedImages[i].src === usedImages[i - 1].src) {
-      for (let j = i + 1; j < usedImages.length; j++) {
-        if (usedImages[j].src !== usedImages[i].src) {
-          const tmp = usedImages[i]
-          usedImages[i] = usedImages[j]
-          usedImages[j] = tmp
-          break
-        }
-      }
-    }
-  }
 
   return coords.map((c, i) => ({
     ...c,
     src: usedImages[i].src,
     alt: usedImages[i].alt,
+    type: usedImages[i].type,
   }))
+}
+
+function mulberry32(seed: number) {
+  return () => {
+    seed |= 0
+    seed = (seed + 0x6D2B79F5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/** Spread stills so a tile does not match the pictures beside or above it. */
+function scatterStills(stills: MediaEntry[], totalSlots: number, rows: number) {
+  const rand = mulberry32(0x1b12a5)
+  const used: MediaEntry[] = []
+  for (let i = 0; i < totalSlots; i++) {
+    const col = Math.floor(i / rows)
+    const row = i % rows
+    const forbidden = new Set<string>()
+    const ban = (index: number) => {
+      const item = used[index]
+      if (item) forbidden.add(item.src)
+    }
+    for (let r = 0; r < row; r++) ban(col * rows + r)
+    if (col > 0) {
+      ban((col - 1) * rows + row)
+      if (row > 0) ban((col - 1) * rows + (row - 1))
+      if (row + 1 < rows) ban((col - 1) * rows + (row + 1))
+    }
+    let choices = stills.filter(item => !forbidden.has(item.src))
+    if (choices.length === 0) {
+      const previous = used[i - 1]?.src
+      choices = stills.filter(item => item.src !== previous)
+    }
+    if (choices.length === 0) choices = stills
+    used.push(choices[Math.floor(rand() * choices.length)])
+  }
+  return used
 }
 
 function computeItemBaseRotation(
@@ -282,7 +314,7 @@ let spinClock: { originTs: number, originY: number, velocity: number } | null = 
 
 const mediaList = computed(() => normalizeMedia(props.images))
 const tileImages = computed(() => mediaList.value.filter(item => item.type === 'image'))
-const items = computed(() => buildItems(tileImages.value, props.segments))
+const items = computed(() => buildItems(mediaList.value, props.segments))
 
 function preloadTileImages() {
   if (!import.meta.client) return
@@ -1128,11 +1160,22 @@ onUnmounted(() => {
               class="item__image"
               role="button"
               tabindex="0"
-              :aria-label="it.alt || 'Open image'"
+              :aria-label="it.alt || (it.type === 'video' ? 'Open video' : 'Open image')"
               @click="onTileClick"
               @pointerup="onTilePointerUp"
             >
+              <video
+                v-if="it.type === 'video'"
+                :src="it.src"
+                muted
+                loop
+                playsinline
+                autoplay
+                preload="metadata"
+                :aria-label="it.alt"
+              />
               <img
+                v-else
                 :src="it.src"
                 draggable="false"
                 :alt="it.alt"

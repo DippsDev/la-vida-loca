@@ -113,3 +113,29 @@ grant usage, select on sequence public.requests_id_seq to anon, authenticated, s
 
 -- Realtime for the admin inbox
 alter publication supabase_realtime add table public.requests;
+
+-- Drop pending requests once they are older than 20 days.
+create extension if not exists pg_cron with schema pg_catalog;
+
+create or replace function public.clear_stale_pending_requests()
+returns integer
+language sql
+security invoker
+set search_path = ''
+as $$
+  with removed as (
+    delete from public.requests
+    where status = 'PENDING'
+      and created_at < pg_catalog.now() - interval '20 days'
+    returning 1
+  )
+  select count(*)::integer from removed;
+$$;
+
+revoke all on function public.clear_stale_pending_requests() from public, anon, authenticated;
+
+select cron.schedule(
+  'clear-stale-pending-requests',
+  '15 * * * *',
+  $$select public.clear_stale_pending_requests()$$
+);

@@ -3,6 +3,10 @@ import { GALLERY_IMAGES, useGlobeGallery } from '~/composables/useGlobeGallery'
 
 const route = useRoute()
 
+function barePath(path: string) {
+  return path.length > 1 ? path.replace(/\/+$/, '') : path
+}
+
 const {
   showVeil,
   veilOut,
@@ -10,11 +14,14 @@ const {
   liftVeil,
 } = useGlobeGallery()
 
-const isInteractive = computed(() => route.path === '/gallery')
-const showSphere = computed(() => route.path === '/' || route.path === '/gallery')
+const isInteractive = computed(() => barePath(route.path) === '/gallery')
+const showSphere = computed(() => {
+  const path = barePath(route.path)
+  return path === '/' || path === '/gallery'
+})
 
 watch(() => route.path, (path) => {
-  if (path === '/gallery') initFromSplash()
+  if (barePath(path) === '/gallery') initFromSplash()
 }, { immediate: true })
 
 onMounted(() => {
@@ -36,9 +43,8 @@ onMounted(() => {
       :images="GALLERY_IMAGES"
       overlay-blur-color="#072a66"
       :auto-spin="true"
-      :auto-spin-speed-deg="4.2"
+      :auto-spin-speed-deg="4.8"
       :auto-spin-delay-ms="0"
-      grayscale
       @ready="liftVeil"
     />
 

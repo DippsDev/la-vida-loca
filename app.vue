@@ -1,17 +1,21 @@
 <script setup lang="ts">
 const route = useRoute()
 
+function barePath(path: string) {
+  return path.length > 1 ? path.replace(/\/+$/, '') : path
+}
+
 const globeRoutes = new Set(['/', '/gallery', '/rsvp'])
-const showGlobe = ref(globeRoutes.has(route.path))
+const showGlobe = ref(globeRoutes.has(barePath(route.path)))
 let hideGlobeTimer: number | undefined
 
 watch(() => route.path, (path) => {
   if (!import.meta.client) {
-    showGlobe.value = globeRoutes.has(path)
+    showGlobe.value = globeRoutes.has(barePath(path))
     return
   }
   window.clearTimeout(hideGlobeTimer)
-  if (globeRoutes.has(path)) {
+  if (globeRoutes.has(barePath(path))) {
     showGlobe.value = true
     return
   }
@@ -27,7 +31,7 @@ watch(() => route.path, (path) => {
     <PersistentGlobeLayer v-if="showGlobe" />
     <div
       class="page-layer"
-      :class="{ 'page-layer--passthrough': route.path === '/gallery' }"
+      :class="{ 'page-layer--passthrough': barePath(route.path) === '/gallery' }"
     >
       <NuxtPage :transition="{ name: 'page' }" />
     </div>

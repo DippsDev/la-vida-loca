@@ -2,6 +2,36 @@
 import { GLOBE_TILE_SOURCES } from '~/utils/galleryPlaceholders'
 
 const exiting = ref(false)
+const videoA = ref<HTMLVideoElement | null>(null)
+const videoB = ref<HTMLVideoElement | null>(null)
+const visible = ref<'a' | 'b'>('a')
+
+const loopBlendSeconds = 1.6
+let blending = false
+
+function partner(which: 'a' | 'b') {
+  return which === 'a' ? videoB.value : videoA.value
+}
+
+function softenLoop(which: 'a' | 'b', event: Event) {
+  if (which !== visible.value || blending) return
+  const video = event.target as HTMLVideoElement
+  if (!Number.isFinite(video.duration) || video.duration < loopBlendSeconds + 0.4) return
+  if (video.duration - video.currentTime > loopBlendSeconds) return
+
+  const next = partner(which)
+  if (!next) return
+  blending = true
+  next.currentTime = 0
+  void next.play()
+  visible.value = which === 'a' ? 'b' : 'a'
+}
+
+function finishLoop(which: 'a' | 'b') {
+  const video = which === 'a' ? videoA.value : videoB.value
+  video?.pause()
+  blending = false
+}
 
 function preloadGallery() {
   void preloadRouteComponents('/gallery')
@@ -44,6 +74,43 @@ onMounted(() => {
       :class="{ 'is-exiting': exiting }"
       aria-label="La Vida LOCA splash"
     >
+      <video
+        ref="videoA"
+        class="splash-video"
+        :class="{ 'is-visible': visible === 'a' }"
+        autoplay
+        muted
+        playsinline
+        preload="auto"
+        aria-hidden="true"
+        @timeupdate="softenLoop('a', $event)"
+        @ended="finishLoop('a')"
+      >
+        <source
+          src="/splash-ibiza.mp4"
+          type="video/mp4"
+        >
+      </video>
+      <video
+        ref="videoB"
+        class="splash-video"
+        :class="{ 'is-visible': visible === 'b' }"
+        muted
+        playsinline
+        preload="auto"
+        aria-hidden="true"
+        @timeupdate="softenLoop('b', $event)"
+        @ended="finishLoop('b')"
+      >
+        <source
+          src="/splash-ibiza.mp4"
+          type="video/mp4"
+        >
+      </video>
+      <div
+        class="splash-veil"
+        aria-hidden="true"
+      />
 
       <div class="splash-copy relative z-10 flex w-full flex-col items-center px-6 text-center">
         <HandwritingSignature />
@@ -66,6 +133,36 @@ onMounted(() => {
 <style scoped>
 .splash-shell {
   transition: opacity 280ms ease;
+}
+
+.splash-video {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.6s ease-in-out;
+}
+
+.splash-video.is-visible {
+  z-index: 1;
+  opacity: 1;
+}
+
+.splash-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse at 50% 46%, rgb(7 42 102 / 0.78), rgb(7 42 102 / 0.42) 58%, rgb(7 42 102 / 0.55));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-video {
+    display: none;
+  }
 }
 
 .splash-copy {

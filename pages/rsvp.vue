@@ -169,7 +169,7 @@ async function onSubmit() {
                 autocomplete="tel"
                 inputmode="tel"
                 class="rule__write"
-                placeholder="your number"
+                placeholder="+267 71 234 567"
               >
             </label>
 
