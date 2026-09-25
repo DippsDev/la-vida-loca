@@ -34,7 +34,7 @@ export const GLOBE_PLACEHOLDER_IMAGES: ImageItem[] = [
   { src: '/gallery/party-08.jpg', alt: 'A living-room party with drinks and music' },
   { src: '/gallery/coast-01.jpg', alt: 'Boats in turquoise water along a rocky Ibiza cove' },
   { src: '/gallery/coast-05.jpg', alt: 'Es Vedrà rising out of the Mediterranean' },
-  { src: '/splash-ibiza.mp4', alt: 'Aerial of Ibiza’s clear water and rocky shore', type: 'video' },
+  { src: '/splash-ibiza-1080.mp4', alt: 'Aerial of Ibiza’s clear water and rocky shore', type: 'video' },
   { src: '/gallery/coast-sea.mp4', alt: 'Sunlight on turquoise sea', type: 'video' },
 ]
 

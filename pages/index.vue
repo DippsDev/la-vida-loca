@@ -1,13 +1,31 @@
 <script setup lang="ts">
 import { GLOBE_TILE_SOURCES } from '~/utils/galleryPlaceholders'
 
+const splashClips = [
+  '/splash-ibiza-1080.mp4',
+  '/splash-swim-1.mp4',
+  '/splash-swim-2.mp4',
+]
+
 const exiting = ref(false)
 const videoA = ref<HTMLVideoElement | null>(null)
 const videoB = ref<HTMLVideoElement | null>(null)
 const visible = ref<'a' | 'b'>('a')
+const srcA = ref('')
+const srcB = ref('')
+const live = ref(false)
 
-const loopBlendSeconds = 1.6
+const loopBlendSeconds = 2
 let blending = false
+let warmed = false
+let upcoming = 2
+const savedClipUrl: Record<number, string> = {}
+
+useHead({
+  link: [
+    { rel: 'preload', as: 'image', href: '/splash-poster-1080.jpg', fetchpriority: 'high' },
+  ],
+})
 
 function partner(which: 'a' | 'b') {
   return which === 'a' ? videoB.value : videoA.value
@@ -71,13 +89,17 @@ async function softenLoop(which: 'a' | 'b', event: Event) {
 function finishLoop(which: 'a' | 'b') {
   const video = which === 'a' ? videoA.value : videoB.value
   if (!video) return
-  if (visible.value === which) {
+  if (visible.value === which && !blending) {
     video.currentTime = 0
     void playSplash(video)
-    blending = false
     return
   }
   video.pause()
+  const next = upcoming % splashClips.length
+  upcoming += 1
+  const url = clipUrl(next)
+  if (which === 'a') srcA.value = url
+  else srcB.value = url
   blending = false
 }
 
@@ -110,8 +132,45 @@ function enterSite() {
   return navigateTo('/gallery')
 }
 
-onMounted(() => {
+function clipUrl(index: number) {
+  const clip = index % splashClips.length
+  return savedClipUrl[clip] || splashClips[clip]
+}
+
+function warmRest() {
+  if (warmed) return
+  warmed = true
+  live.value = true
+  srcB.value = clipUrl(1)
   preloadGallery()
+}
+
+function rememberSplash() {
+  if (!('serviceWorker' in navigator)) return
+  void navigator.serviceWorker.register('/splash-cache.js').catch(() => {})
+}
+
+async function savedSplashUrl() {
+  if (!('caches' in window)) return ''
+  try {
+    const cache = await caches.open('loca-splash-v3')
+    const saved = await cache.match('/splash-ibiza-1080.mp4')
+    if (!saved) return ''
+    const blob = await saved.blob()
+    if (blob.size < 100000) return ''
+    const url = URL.createObjectURL(blob)
+    savedClipUrl[0] = url
+    return url
+  }
+  catch {
+    return ''
+  }
+}
+
+onMounted(async () => {
+  rememberSplash()
+  srcA.value = await savedSplashUrl() || splashClips[0]
+  await nextTick()
   void startSplash()
   window.addEventListener('pointerdown', () => {
     void startSplash()
@@ -120,32 +179,38 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="relative min-h-screen overflow-hidden bg-[#072a66]">
+  <div class="relative min-h-screen overflow-hidden">
     <div
-      class="splash-shell fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#072a66]"
-      :class="{ 'is-exiting': exiting }"
+      class="splash-shell fixed inset-0 z-50 flex flex-col items-center justify-center"
+      :class="{ 'is-exiting': exiting, 'is-playing': live }"
       aria-label="La Vida LOCA splash"
     >
       <video
+        v-if="srcA"
         ref="videoA"
         class="splash-video"
         :class="{ 'is-visible': visible === 'a' }"
-        src="/splash-ibiza.mp4"
+        :src="srcA"
+        poster="/splash-poster-1080.jpg"
         autoplay
         muted
         playsinline
         webkit-playsinline
         preload="auto"
+        fetchpriority="high"
         aria-hidden="true"
         @loadeddata="startSplash"
+        @playing="warmRest"
         @timeupdate="softenLoop('a', $event)"
         @ended="finishLoop('a')"
       />
       <video
+        v-if="srcB"
         ref="videoB"
         class="splash-video"
         :class="{ 'is-visible': visible === 'b' }"
-        src="/splash-ibiza.mp4"
+        :src="srcB"
+        poster="/splash-poster-1080.jpg"
         muted
         playsinline
         webkit-playsinline
@@ -153,10 +218,6 @@ onMounted(() => {
         aria-hidden="true"
         @timeupdate="softenLoop('b', $event)"
         @ended="finishLoop('b')"
-      />
-      <div
-        class="splash-veil"
-        aria-hidden="true"
       />
 
       <div class="splash-copy relative z-10 flex w-full flex-col items-center px-6 text-center">
@@ -179,6 +240,7 @@ onMounted(() => {
 
 <style scoped>
 .splash-shell {
+  background: #0b2438 url('/splash-poster-1080.jpg') center / cover no-repeat;
   transition: opacity 280ms ease;
 }
 
@@ -189,8 +251,8 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  background: transparent;
   opacity: 0;
-  transition: opacity 1.6s ease-in-out;
 }
 
 .splash-video.is-visible {
@@ -198,12 +260,8 @@ onMounted(() => {
   opacity: 1;
 }
 
-.splash-veil {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background:
-    radial-gradient(ellipse at 50% 46%, rgb(7 42 102 / 0.78), rgb(7 42 102 / 0.42) 58%, rgb(7 42 102 / 0.55));
+.splash-shell.is-playing .splash-video {
+  transition: opacity 2s ease-in-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -213,6 +271,7 @@ onMounted(() => {
 }
 
 .splash-copy {
+  text-shadow: 0 2px 16px rgb(0 0 0 / 0.35);
   transform: translateY(0);
   opacity: 1;
   transition:
