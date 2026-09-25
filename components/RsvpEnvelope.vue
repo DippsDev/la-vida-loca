@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 639px) {
   .invite {
-    margin-top: 1.25rem;
+    margin-top: 2.75rem;
   }
 }
 
@@ -356,6 +356,16 @@ onBeforeUnmount(() => {
   text-align: center;
   text-transform: uppercase;
   animation: hint-pulse 2.6s ease-in-out infinite;
+}
+
+@media (max-width: 639px) {
+  .envelope__seal {
+    margin-bottom: -0.55rem;
+  }
+
+  .envelope__mark {
+    bottom: 5%;
+  }
 }
 
 .invite[data-phase="opening"] .envelope {

@@ -986,7 +986,9 @@ onMounted(() => {
     // iPhone SE portrait is a 600px sphere in a 375×667 screen.
     // Scale that same crop to cover phones, iPads, and other tablets.
     if (seCrop) {
-      radius = 600 * Math.max(w / 375, h / 667)
+      // Phones get a larger sphere so each square reads bigger than the SE crop.
+      const base = w < 768 ? 680 : 600
+      radius = base * Math.max(w / 375, h / 667)
     }
     else {
       let basis: number

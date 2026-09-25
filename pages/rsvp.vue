@@ -100,7 +100,7 @@ async function onSubmit() {
     </svg>
     <SiteNavbar />
 
-    <main class="rsvp-main relative z-10 mx-auto flex max-w-lg flex-col px-5 pt-24 sm:min-h-dvh sm:px-6 sm:pt-28">
+    <main class="rsvp-main relative z-10 mx-auto flex max-w-lg flex-col px-5 sm:min-h-dvh sm:px-6">
       <p class="mb-5 text-center text-xs font-medium uppercase tracking-[0.22em] text-cream/90">
         Saturday · Private villa · By invitation
       </p>
@@ -244,6 +244,7 @@ async function onSubmit() {
 .rsvp-main {
   justify-content: flex-start;
   min-height: 100dvh;
+  padding-top: calc(6rem + env(safe-area-inset-top, 0px));
   /* Room to scroll Send clear of the iPhone home indicator and Safari bar. */
   padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
   scroll-padding-bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px));
@@ -252,6 +253,7 @@ async function onSubmit() {
 @media (min-width: 640px) {
   .rsvp-main {
     justify-content: safe center;
+    padding-top: 7rem;
     padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 }

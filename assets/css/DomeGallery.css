@@ -133,7 +133,7 @@ main.sphere-main {
 
 @media (max-width: 767px) {
   .sphere-root {
-    --tile-inset: 23px;
+    --tile-inset: 12px;
   }
 }
 
