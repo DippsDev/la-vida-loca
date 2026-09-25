@@ -5,7 +5,7 @@ const menuOpen = ref(false)
 const iconOpen = ref(false)
 
 const links = [
-  { to: '/home', label: 'Gallery' },
+  { to: '/gallery', label: 'Gallery' },
   { to: '/about', label: 'About' },
   { to: '/rsvp', label: 'RSVP' },
   { to: '/status', label: 'Status' },
@@ -67,14 +67,11 @@ onBeforeUnmount(() => {
   <header class="pointer-events-none absolute inset-x-0 top-0 z-40">
     <nav class="pointer-events-auto relative mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
       <NuxtLink
-        to="/home"
+        to="/gallery"
         class="group flex flex-col leading-none"
       >
-        <span class="font-script text-3xl text-cream transition group-hover:text-white sm:text-4xl">
-          La Vida
-        </span>
-        <span class="font-display text-sm font-extrabold tracking-brand text-cream/90 group-hover:text-white">
-          LOCA
+        <span class="font-script text-4xl leading-none text-cream transition group-hover:text-white sm:text-5xl">
+          La Vida Loca
         </span>
       </NuxtLink>
 
@@ -138,15 +135,12 @@ onBeforeUnmount(() => {
 
           <div class="mobile-menu__chrome relative mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
             <NuxtLink
-              to="/home"
+              to="/gallery"
               class="group flex flex-col leading-none"
               @click="closeMenu"
             >
-              <span class="font-script text-3xl text-cream transition group-hover:text-white sm:text-4xl">
-                La Vida
-              </span>
-              <span class="font-display text-sm font-extrabold tracking-brand text-cream/90 group-hover:text-white">
-                LOCA
+              <span class="font-script text-4xl leading-none text-cream transition group-hover:text-white sm:text-5xl">
+                La Vida Loca
               </span>
             </NuxtLink>
 

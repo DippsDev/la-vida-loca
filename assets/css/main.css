@@ -34,7 +34,7 @@ body {
   }
 }
 
-/* ── Home ↔ RSVP page transitions ── */
+/* ── Page open / close ── */
 .page-shell {
   position: relative;
   min-height: 100dvh;
@@ -63,74 +63,50 @@ body {
   pointer-events: auto;
 }
 
-.slide-to-rsvp-enter-active,
-.slide-to-rsvp-leave-active,
-.slide-to-gallery-enter-active,
-.slide-to-gallery-leave-active {
+.page-enter-active,
+.page-leave-active {
   transition:
-    opacity 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 460ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 460ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.slide-to-rsvp-leave-active,
-.slide-to-gallery-leave-active {
+.page-leave-active {
   position: absolute;
   inset: 0;
   width: 100%;
   z-index: 1;
+  pointer-events: none;
 }
 
-.slide-to-rsvp-enter-active,
-.slide-to-gallery-enter-active {
+.page-enter-active {
+  position: relative;
   z-index: 2;
 }
 
-/* Gallery → RSVP */
-.slide-to-rsvp-leave-to {
+.page-enter-from {
   opacity: 0;
-  transform: scale(0.985);
+  transform: translateY(10px);
 }
 
-.slide-to-rsvp-enter-from {
+.page-leave-to {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(-8px);
 }
 
-.slide-to-rsvp-enter-to,
-.slide-to-rsvp-leave-from {
-  opacity: 1;
-  transform: none;
-}
-
-/* RSVP → Gallery */
-.slide-to-gallery-leave-to {
-  opacity: 0;
-  transform: translateY(14px);
-}
-
-.slide-to-gallery-enter-from {
-  opacity: 0;
-  transform: scale(0.985);
-}
-
-.slide-to-gallery-enter-to,
-.slide-to-gallery-leave-from {
+.page-enter-to,
+.page-leave-from {
   opacity: 1;
   transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slide-to-rsvp-enter-active,
-  .slide-to-rsvp-leave-active,
-  .slide-to-gallery-enter-active,
-  .slide-to-gallery-leave-active {
+  .page-enter-active,
+  .page-leave-active {
     transition-duration: 120ms;
   }
 
-  .slide-to-rsvp-leave-to,
-  .slide-to-rsvp-enter-from,
-  .slide-to-gallery-leave-to,
-  .slide-to-gallery-enter-from {
+  .page-enter-from,
+  .page-leave-to {
     transform: none;
   }
 }

@@ -23,9 +23,10 @@ export function useGlobeGallery() {
     }
 
     if (fromSplash) {
-      showVeil.value = true
-      veilOut.value = false
       navIn.value = false
+      requestAnimationFrame(() => {
+        navIn.value = true
+      })
     }
   }
 

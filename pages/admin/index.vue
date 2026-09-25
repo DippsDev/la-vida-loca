@@ -7,7 +7,7 @@ definePageMeta({
   ssr: false,
 })
 
-useHead({ title: 'Admin · La Vida LOCA' })
+useHead({ title: 'Admin · La Vida Loca' })
 
 type FilterTab = 'ALL' | RequestStatus
 
@@ -233,11 +233,11 @@ onUnmounted(() => {
     <header class="bg-cobalt-deep px-4 py-6 text-cream sm:px-6 sm:py-8">
       <div class="mx-auto flex max-w-5xl flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
         <div class="min-w-0">
-          <p class="font-script text-3xl leading-none text-white sm:text-4xl">
-            La Vida
+          <p class="font-script text-4xl leading-none text-white sm:text-5xl">
+            La Vida Loca
           </p>
           <h1 class="mt-1 font-display text-2xl font-extrabold tracking-[0.1em] sm:text-3xl">
-            LOCA · Admin
+            Admin
           </h1>
           <p class="mt-2 text-sm text-cream/70">
             Live request inbox
@@ -252,7 +252,7 @@ onUnmounted(() => {
 
         <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
           <NuxtLink
-            to="/home"
+            to="/gallery"
             class="rounded-sm border border-cream/40 px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-cream transition hover:border-cream hover:bg-cream/10 sm:px-4 sm:text-xs"
           >
             Public page

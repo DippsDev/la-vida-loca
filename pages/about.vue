@@ -1,5 +1,5 @@
 <script setup lang="ts">
-useHead({ title: 'About · La Vida LOCA' })
+useHead({ title: 'About · La Vida Loca' })
 </script>
 
 <template>
@@ -16,7 +16,7 @@ useHead({ title: 'About · La Vida LOCA' })
         About the experience
       </p>
 
-      <h1 class="mt-4 text-center font-display text-3xl font-bold tracking-wide text-cream sm:text-4xl">
+      <h1 class="mt-4 text-center font-script text-5xl leading-none text-cream sm:text-6xl">
         La Vida Loca
       </h1>
 
@@ -40,7 +40,7 @@ useHead({ title: 'About · La Vida LOCA' })
 
         <div class="flex flex-wrap gap-3 pt-2">
           <NuxtLink
-            to="/home"
+            to="/gallery"
             class="rounded-sm bg-cobalt-deep px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-cream transition hover:brightness-110"
           >
             View gallery

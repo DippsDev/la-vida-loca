@@ -4,9 +4,9 @@ import { GLOBE_TILE_SOURCES } from '~/utils/galleryPlaceholders'
 const exiting = ref(false)
 
 function preloadGallery() {
-  void preloadRouteComponents('/home')
+  void preloadRouteComponents('/gallery')
   void Promise.all([
-    import('~/pages/home.vue'),
+    import('~/pages/gallery.vue'),
     import('~/components/DomeGallery.vue'),
     import('~/components/SiteNavbar.vue'),
   ])
@@ -29,7 +29,7 @@ function enterSite() {
   }
 
   preloadGallery()
-  return navigateTo('/home')
+  return navigateTo('/gallery')
 }
 
 onMounted(() => {
@@ -48,7 +48,7 @@ onMounted(() => {
       <div class="splash-copy relative z-10 flex w-full flex-col items-center px-6 text-center">
         <HandwritingSignature />
         <p class="mt-3 text-xs font-medium uppercase tracking-[0.22em] text-cream/90">
-          Saturday · Private villa · By invitation
+          Private Event · By Invitation
         </p>
         <button
           type="button"

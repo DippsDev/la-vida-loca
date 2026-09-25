@@ -10,11 +10,14 @@ const {
   liftVeil,
 } = useGlobeGallery()
 
-const isInteractive = computed(() => route.path === '/home')
+const isInteractive = computed(() => route.path === '/gallery')
+const showSphere = computed(() => route.path === '/' || route.path === '/gallery')
+
+watch(() => route.path, (path) => {
+  if (path === '/gallery') initFromSplash()
+}, { immediate: true })
 
 onMounted(() => {
-  initFromSplash()
-
   if (showVeil.value) {
     window.setTimeout(liftVeil, 2500)
   }
@@ -27,14 +30,14 @@ onMounted(() => {
     :class="{ 'persistent-globe--interactive': isInteractive }"
     aria-hidden="false"
   >
-    <!-- Hide the 3D sphere off /home so it can't stack above page content (RSVP form, etc.) -->
+    <!-- Hide the 3D sphere off /gallery so it can't stack above page content (RSVP form, etc.) -->
     <DomeGallery
-      v-show="isInteractive"
+      v-show="showSphere"
       :images="GALLERY_IMAGES"
       overlay-blur-color="#072a66"
       :auto-spin="true"
-      :auto-spin-speed-deg="3.2"
-      :auto-spin-delay-ms="700"
+      :auto-spin-speed-deg="4.2"
+      :auto-spin-delay-ms="0"
       grayscale
       @ready="liftVeil"
     />

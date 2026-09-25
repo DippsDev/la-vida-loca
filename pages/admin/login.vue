@@ -3,7 +3,7 @@ definePageMeta({
   ssr: false,
 })
 
-useHead({ title: 'Admin sign in · La Vida LOCA' })
+useHead({ title: 'Admin sign in · La Vida Loca' })
 
 const auth = useAdminAuth()
 
@@ -95,7 +95,7 @@ async function onSubmit() {
       </form>
 
       <NuxtLink
-        to="/home"
+        to="/gallery"
         class="mt-6 block text-center text-xs font-semibold uppercase tracking-wider text-cream/70 transition hover:text-cream"
       >
         Back to gallery

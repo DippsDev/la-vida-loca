@@ -179,6 +179,7 @@ function onLightboxTouchEnd(e: TouchEvent) {
   const dx = touch.clientX - lightboxSwipeStart.value.x
   const dy = touch.clientY - lightboxSwipeStart.value.y
   lightboxSwipeStart.value = null
+  showSwipeHint.value = false
 
   // Horizontal swipe only — ignore taps and mostly-vertical gestures
   if (Math.abs(dx) < 56) return
@@ -265,7 +266,6 @@ const startPosRef = ref<{ x: number; y: number } | null>(null)
 const draggingRef = ref(false)
 const movedRef = ref(false)
 const inertiaRAF = ref<number | null>(null)
-const autoSpinRAF = ref<number | null>(null)
 const openingRef = ref(false)
 const openStartedAtRef = ref(0)
 const lastDragEndAt = ref(0)
@@ -273,7 +273,12 @@ const scrollLockedRef = ref(false)
 const lockedRadiusRef = ref<number | null>(null)
 const lightboxIndex = ref(-1)
 const isEnlarged = ref(false)
+const showSwipeHint = ref(false)
+const showScrollHint = ref(false)
+let swipeHintTimer: number | undefined
 let autoSpinResumeTimer: number | null = null
+let spinFrame: number | null = null
+let spinClock: { originTs: number, originY: number, velocity: number } | null = null
 
 const mediaList = computed(() => normalizeMedia(props.images))
 const tileImages = computed(() => mediaList.value.filter(item => item.type === 'image'))
@@ -353,6 +358,7 @@ function syncPlaceholderMark(entry: MediaEntry, overlay: HTMLElement) {
   mark.style.top = `${top + height + 18}px`
   mark.style.width = `${width}px`
   viewer.appendChild(mark)
+  requestAnimationFrame(syncScrollPad)
 }
 
 function resolveLightboxIndex(src: string) {
@@ -362,6 +368,61 @@ function resolveLightboxIndex(src: string) {
   if (exact >= 0) return exact
   const loose = list.findIndex(item => src.includes(item.src) || item.src.includes(src))
   return loose >= 0 ? loose : 0
+}
+
+function syncScrollPad() {
+  const viewer = viewerRef.value
+  if (!viewer) return
+
+  const mark = viewer.querySelector('.enlarge-mark') as HTMLElement | null
+  let pad = viewer.querySelector('.enlarge-scroll-pad') as HTMLElement | null
+  if (!mark) {
+    pad?.remove()
+    showScrollHint.value = false
+    return
+  }
+
+  const needed = mark.offsetTop + mark.offsetHeight + 28
+  if (needed <= viewer.clientHeight + 8) {
+    pad?.remove()
+    viewer.scrollTop = 0
+    showScrollHint.value = false
+    return
+  }
+
+  if (!pad) {
+    pad = document.createElement('div')
+    pad.className = 'enlarge-scroll-pad'
+    pad.setAttribute('aria-hidden', 'true')
+    viewer.appendChild(pad)
+  }
+  pad.style.height = `${needed}px`
+  showScrollHint.value = viewer.scrollTop + viewer.clientHeight < viewer.scrollHeight - 16
+}
+
+function onViewerScroll() {
+  const viewer = viewerRef.value
+  if (!viewer) return
+  showScrollHint.value = viewer.scrollTop + viewer.clientHeight < viewer.scrollHeight - 16
+}
+
+function showMobileSwipeHint() {
+  window.clearTimeout(swipeHintTimer)
+  if (!import.meta.client || window.innerWidth >= 768) {
+    showSwipeHint.value = false
+    return
+  }
+  showSwipeHint.value = true
+  swipeHintTimer = window.setTimeout(() => {
+    showSwipeHint.value = false
+  }, 2800)
+}
+
+function clearLightboxHints() {
+  window.clearTimeout(swipeHintTimer)
+  showSwipeHint.value = false
+  showScrollHint.value = false
+  viewerRef.value?.querySelector('.enlarge-scroll-pad')?.remove()
 }
 
 function navigateLightbox(direction: 1 | -1) {
@@ -374,10 +435,19 @@ function navigateLightbox(direction: 1 | -1) {
   fillEnlargeOverlay(overlay, mediaList.value[next])
 }
 
+function sphereRadiusPx() {
+  return lockedRadiusRef.value ?? 0
+}
+
 function applyTransform(xDeg: number, yDeg: number) {
   const sphere = sphereRef.value
   if (!sphere) return
-  sphere.style.transform = `translateZ(calc(var(--radius) * -1)) rotateX(${xDeg}deg) rotateY(${yDeg}deg)`
+  const y = ((yDeg % 360) + 360) % 360
+  const radius = sphereRadiusPx()
+  const translate = radius > 0
+    ? `translateZ(${-radius}px)`
+    : 'translateZ(calc(var(--radius) * -1))'
+  sphere.style.transform = `${translate} rotateX(${xDeg}deg) rotateY(${y}deg)`
 }
 
 function canAutoSpin() {
@@ -390,11 +460,10 @@ function canAutoSpin() {
   )
 }
 
-function stopAutoSpin() {
-  if (autoSpinRAF.value) {
-    cancelAnimationFrame(autoSpinRAF.value)
-    autoSpinRAF.value = null
-  }
+function cancelSpinLoop() {
+  if (spinFrame == null) return
+  cancelAnimationFrame(spinFrame)
+  spinFrame = null
 }
 
 function clearAutoSpinResume() {
@@ -404,42 +473,79 @@ function clearAutoSpinResume() {
   }
 }
 
+function liveSpinY(ts = performance.now()) {
+  if (!spinClock) return rotationRef.value.y
+  return spinClock.originY + spinClock.velocity * ((ts - spinClock.originTs) / 1000)
+}
+
+/** Park the globe on its current angle and stop the spin loop. */
+function freezeSpin() {
+  clearAutoSpinResume()
+  const y = liveSpinY()
+  cancelSpinLoop()
+  spinClock = null
+  rotationRef.value = { x: rotationRef.value.x, y: wrapAngleSigned(y) }
+  applyTransform(rotationRef.value.x, rotationRef.value.y)
+}
+
+function stopAutoSpin() {
+  freezeSpin()
+}
+
+/**
+ * Yaw is a straight function of time, written as a 0–360° transform.
+ * The displayed angle wraps forward only, so the loop has no reverse hitch.
+ */
+function runSpinClock(fromY: number, velocity: number) {
+  if (!canAutoSpin()) return
+  cancelSpinLoop()
+  const originTs = performance.now()
+  spinClock = { originTs, originY: fromY, velocity }
+
+  const step = (ts: number) => {
+    if (!canAutoSpin() || !spinClock) {
+      spinFrame = null
+      return
+    }
+    const target = props.autoSpinSpeedDeg
+    const elapsed = (ts - spinClock.originTs) / 1000
+    let angle = spinClock.originY + spinClock.velocity * elapsed
+    if (Math.abs(spinClock.velocity - target) > 0.02) {
+      const dt = Math.min(0.032, elapsed)
+      const k = 1 - Math.exp(-dt / 0.4)
+      const nextV = spinClock.velocity + (target - spinClock.velocity) * k
+      angle = spinClock.originY + ((spinClock.velocity + nextV) / 2) * dt
+      spinClock = { originTs: ts, originY: angle, velocity: nextV }
+    }
+    rotationRef.value = { x: rotationRef.value.x, y: wrapAngleSigned(angle) }
+    applyTransform(rotationRef.value.x, angle)
+    spinFrame = requestAnimationFrame(step)
+  }
+
+  spinFrame = requestAnimationFrame(step)
+}
+
+function blendToCruise(fromVelocity: number) {
+  runSpinClock(rotationRef.value.y, fromVelocity)
+}
+
+function startAutoSpin() {
+  runSpinClock(rotationRef.value.y, props.autoSpinSpeedDeg)
+}
+
 /** Resume idle spin after drag/inertia — restarts the loop if it was stopped. */
-function scheduleAutoSpinResume(delayMs = 450) {
+function scheduleAutoSpinResume(delayMs = 0) {
   if (!props.autoSpin) return
   clearAutoSpinResume()
   autoSpinResumeTimer = window.setTimeout(() => {
     autoSpinResumeTimer = null
-    if (!canAutoSpin() && (draggingRef.value || focusedElRef.value || openingRef.value)) return
-    // Inertia may still be winding down — wait until it's clear
     if (inertiaRAF.value != null) {
-      scheduleAutoSpinResume(200)
+      scheduleAutoSpinResume(120)
       return
     }
-    if (draggingRef.value || focusedElRef.value || openingRef.value) return
-    startAutoSpin()
+    if (!canAutoSpin() || spinFrame != null) return
+    runSpinClock(rotationRef.value.y, props.autoSpinSpeedDeg)
   }, delayMs)
-}
-
-function startAutoSpin() {
-  if (!props.autoSpin || autoSpinRAF.value != null) return
-
-  let lastTs = performance.now()
-
-  const step = (ts: number) => {
-    const dt = Math.min(0.05, (ts - lastTs) / 1000)
-    lastTs = ts
-
-    if (canAutoSpin()) {
-      const nextY = wrapAngleSigned(rotationRef.value.y + props.autoSpinSpeedDeg * dt)
-      rotationRef.value = { x: rotationRef.value.x, y: nextY }
-      applyTransform(rotationRef.value.x, nextY)
-    }
-
-    autoSpinRAF.value = requestAnimationFrame(step)
-  }
-
-  autoSpinRAF.value = requestAnimationFrame(step)
 }
 
 function lockScroll() {
@@ -475,7 +581,7 @@ function startInertia(vx: number, vy: number) {
 
   const finishInertia = () => {
     inertiaRAF.value = null
-    scheduleAutoSpinResume(350)
+    blendToCruise((vX / 200) * 60)
   }
 
   const step = () => {
@@ -524,6 +630,7 @@ function whenTransitionEnds(el: HTMLElement, property: string, ms: number, cb: (
 
 function openItemFromElement(el: HTMLElement) {
   if (openingRef.value) return
+  freezeSpin()
   openingRef.value = true
   openStartedAtRef.value = performance.now()
   lockScroll()
@@ -637,6 +744,8 @@ function openItemFromElement(el: HTMLElement) {
   whenTransitionEnds(overlay, 'transform', ms, () => {
     overlay.style.willChange = 'auto'
     overlay.style.transition = ''
+    syncScrollPad()
+    showMobileSwipeHint()
   })
 }
 
@@ -664,6 +773,7 @@ function closeEnlarge() {
   const parent = el.parentElement
   const overlay = viewerRef.value.querySelector('.enlarge') as HTMLElement | null
   viewerRef.value.querySelector('.enlarge-mark')?.remove()
+  clearLightboxHints()
   if (!parent || !overlay) return
 
   const refDiv = parent.querySelector('.item__image--reference')
@@ -697,7 +807,7 @@ function closeEnlarge() {
               document.body.classList.remove('dg-scroll-lock')
               scrollLockedRef.value = false
             }
-            scheduleAutoSpinResume(300)
+            scheduleAutoSpinResume(0)
           }, 220)
         })
       })
@@ -833,10 +943,10 @@ onMounted(() => {
     root.style.setProperty('--radius', `${lockedRadiusRef.value}px`)
     root.style.setProperty('--viewer-pad', `${viewerPad}px`)
     root.style.setProperty('--overlay-blur-color', props.overlayBlurColor)
-    root.style.setProperty('--tile-radius', props.imageBorderRadius)
+    root.style.setProperty('--tile-radius', w < 768 ? '22px' : props.imageBorderRadius)
     root.style.setProperty('--enlarge-radius', props.openedImageBorderRadius)
     root.style.setProperty('--image-filter', props.grayscale ? 'grayscale(1)' : 'none')
-    applyTransform(rotationRef.value.x, rotationRef.value.y)
+    applyTransform(rotationRef.value.x, liveSpinY())
   })
   ro.observe(root)
   applyTransform(rotationRef.value.x, rotationRef.value.y)
@@ -870,7 +980,7 @@ onMounted(() => {
 
       if (first) {
         stopInertia()
-        clearAutoSpinResume()
+        freezeSpin()
         const evt = event as PointerEvent
         draggingRef.value = true
         movedRef.value = false
@@ -903,7 +1013,7 @@ onMounted(() => {
         startPosRef.value = null
 
         if (canceled) {
-          scheduleAutoSpinResume(400)
+          scheduleAutoSpinResume(0)
           movedRef.value = false
           return
         }
@@ -921,7 +1031,7 @@ onMounted(() => {
           startInertia(vx, vy)
         }
         else {
-          scheduleAutoSpinResume(450)
+          scheduleAutoSpinResume(0)
         }
         if (movedRef.value) lastDragEndAt.value = performance.now()
         movedRef.value = false
@@ -935,7 +1045,7 @@ onMounted(() => {
     if (!draggingRef.value) return
     draggingRef.value = false
     startPosRef.value = null
-    scheduleAutoSpinResume(450)
+    scheduleAutoSpinResume(0)
   }
   main.addEventListener('pointerup', endDragIfStuck)
   main.addEventListener('pointercancel', endDragIfStuck)
@@ -1044,6 +1154,7 @@ onUnmounted(() => {
         class="viewer"
         @touchstart.passive="onLightboxTouchStart"
         @touchend.passive="onLightboxTouchEnd"
+        @scroll.passive="onViewerScroll"
       >
         <div
           ref="scrimRef"
@@ -1073,6 +1184,21 @@ onUnmounted(() => {
         >
           ›
         </button>
+
+        <p
+          v-show="showSwipeHint"
+          class="lightbox-swipe-hint"
+        >
+          <span aria-hidden="true">‹</span>
+          Swipe
+          <span aria-hidden="true">›</span>
+        </p>
+        <p
+          v-show="showScrollHint"
+          class="lightbox-scroll-hint"
+        >
+          Scroll
+        </p>
       </div>
     </main>
   </div>

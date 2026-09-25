@@ -3,7 +3,7 @@ import type { JoinRequest } from '~/types/request'
 import { partyDetails } from '~/utils/partyDetails'
 import { downloadAcceptedTicket } from '~/utils/ticketDownload'
 
-useHead({ title: 'Status · La Vida LOCA' })
+useHead({ title: 'Status · La Vida Loca' })
 
 const route = useRoute()
 const supabase = useSupabaseClient()
@@ -106,7 +106,7 @@ onMounted(() => {
             type="email"
             required
             autocomplete="email"
-            class="mt-2 w-full border-0 border-b border-ink/20 bg-transparent py-2 font-script text-2xl text-ink outline-none"
+            class="mt-2 w-full border-0 border-b border-ink/20 bg-transparent py-2 font-sans text-base text-ink outline-none"
             placeholder="you@email.com"
           >
         </label>
@@ -209,12 +209,20 @@ onMounted(() => {
         </article>
       </section>
 
-      <p
+      <div
         v-else-if="looked && !errorMsg"
-        class="mx-auto mt-8 w-full max-w-lg text-center text-sm text-cream/80"
+        class="mx-auto mt-8 flex w-full max-w-lg flex-col items-center gap-4 text-center"
       >
-        We do not have a request under that email.
-      </p>
+        <p class="text-sm text-cream/80">
+          We do not have a request under that email.
+        </p>
+        <NuxtLink
+          to="/rsvp"
+          class="bg-cream px-4 py-3 text-xs font-semibold uppercase tracking-wider text-cobalt-deep"
+        >
+          RSVP
+        </NuxtLink>
+      </div>
     </main>
   </div>
 </template>

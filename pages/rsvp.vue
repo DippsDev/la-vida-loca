@@ -1,12 +1,5 @@
 <script setup lang="ts">
-definePageMeta({
-  pageTransition: {
-    name: 'slide-to-rsvp',
-    mode: 'out-in',
-  },
-})
-
-useHead({ title: 'RSVP · La Vida LOCA' })
+useHead({ title: 'RSVP · La Vida Loca' })
 
 const supabase = useSupabaseClient()
 

@@ -16,8 +16,11 @@ export default defineNuxtConfig({
     },
   },
   app: {
+    pageTransition: {
+      name: 'page',
+    },
     head: {
-      title: 'La Vida LOCA',
+      title: 'La Vida Loca',
       meta: [
         {
           name: 'description',
