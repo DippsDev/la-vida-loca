@@ -351,6 +351,21 @@ watch(() => props.playVideos, (play) => {
   })
 })
 
+function upgradeToFullImage(img: HTMLImageElement, fullSrc: string) {
+  const full = new Image()
+  full.decoding = 'async'
+  full.src = fullSrc
+  const apply = () => {
+    if (!img.isConnected) return
+    img.src = fullSrc
+  }
+  if (typeof full.decode === 'function') {
+    full.decode().then(apply).catch(() => {})
+    return
+  }
+  full.onload = apply
+}
+
 function createMediaNode(entry: MediaEntry) {
   if (entry.type === 'video') {
     const video = document.createElement('video')
@@ -366,9 +381,13 @@ function createMediaNode(entry: MediaEntry) {
   }
 
   const img = document.createElement('img')
-  img.src = entry.src
+  const preview = globeTileSrc(entry.src)
+  img.src = preview
   img.alt = entry.alt || ''
   img.draggable = false
+  // The tile is already on screen. Show that first, then swap in the full photo
+  // once it has decoded, so iOS never paints an empty black frame.
+  if (preview !== entry.src) upgradeToFullImage(img, entry.src)
   return img
 }
 
@@ -795,6 +814,8 @@ function openItemFromElement(el: HTMLElement) {
   })
 
   whenTransitionEnds(overlay, 'transform', ms, () => {
+    // A leftover scale() makes iPhone paint the opened photo as a black box.
+    overlay.style.transform = 'none'
     overlay.style.willChange = 'auto'
     overlay.style.transition = ''
     syncScrollPad()
