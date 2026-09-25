@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { GLOBE_TILE_SOURCES } from '~/utils/galleryPlaceholders'
 
+const splashVideosEnabled = false
+
 const splashClips = [
   '/splash-ibiza-1080.mp4',
   '/splash-swim-1.mp4',
@@ -168,6 +170,10 @@ async function savedSplashUrl() {
 }
 
 onMounted(async () => {
+  if (!splashVideosEnabled) {
+    preloadGallery()
+    return
+  }
   rememberSplash()
   srcA.value = await savedSplashUrl() || splashClips[0]
   await nextTick()
@@ -186,7 +192,7 @@ onMounted(async () => {
       aria-label="La Vida LOCA splash"
     >
       <video
-        v-if="srcA"
+        v-if="splashVideosEnabled && srcA"
         ref="videoA"
         class="splash-video"
         :class="{ 'is-visible': visible === 'a' }"
@@ -205,7 +211,7 @@ onMounted(async () => {
         @ended="finishLoop('a')"
       />
       <video
-        v-if="srcB"
+        v-if="splashVideosEnabled && srcB"
         ref="videoB"
         class="splash-video"
         :class="{ 'is-visible': visible === 'b' }"
