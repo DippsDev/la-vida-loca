@@ -13,7 +13,37 @@ function partner(which: 'a' | 'b') {
   return which === 'a' ? videoB.value : videoA.value
 }
 
-function softenLoop(which: 'a' | 'b', event: Event) {
+function prepare(video: HTMLVideoElement | null) {
+  if (!video) return
+  video.muted = true
+  video.defaultMuted = true
+  video.playsInline = true
+  video.setAttribute('muted', '')
+  video.setAttribute('playsinline', '')
+  video.setAttribute('webkit-playsinline', '')
+}
+
+async function playSplash(video: HTMLVideoElement | null) {
+  if (!video) return false
+  prepare(video)
+  try {
+    await video.play()
+    return !video.paused
+  }
+  catch {
+    return false
+  }
+}
+
+async function startSplash() {
+  prepare(videoA.value)
+  prepare(videoB.value)
+  const current = visible.value === 'a' ? videoA.value : videoB.value
+  if (current && !current.paused) return
+  await playSplash(current)
+}
+
+async function softenLoop(which: 'a' | 'b', event: Event) {
   if (which !== visible.value || blending) return
   const video = event.target as HTMLVideoElement
   if (!Number.isFinite(video.duration) || video.duration < loopBlendSeconds + 0.4) return
@@ -22,14 +52,32 @@ function softenLoop(which: 'a' | 'b', event: Event) {
   const next = partner(which)
   if (!next) return
   blending = true
-  next.currentTime = 0
-  void next.play()
+  try {
+    next.currentTime = 0
+  }
+  catch {
+    blending = false
+    return
+  }
+  const started = await playSplash(next)
+  if (!started || visible.value !== which) {
+    blending = false
+    void playSplash(video)
+    return
+  }
   visible.value = which === 'a' ? 'b' : 'a'
 }
 
 function finishLoop(which: 'a' | 'b') {
   const video = which === 'a' ? videoA.value : videoB.value
-  video?.pause()
+  if (!video) return
+  if (visible.value === which) {
+    video.currentTime = 0
+    void playSplash(video)
+    blending = false
+    return
+  }
+  video.pause()
   blending = false
 }
 
@@ -64,6 +112,10 @@ function enterSite() {
 
 onMounted(() => {
   preloadGallery()
+  void startSplash()
+  window.addEventListener('pointerdown', () => {
+    void startSplash()
+  }, { once: true })
 })
 </script>
 
@@ -78,35 +130,30 @@ onMounted(() => {
         ref="videoA"
         class="splash-video"
         :class="{ 'is-visible': visible === 'a' }"
+        src="/splash-ibiza.mp4"
         autoplay
         muted
         playsinline
+        webkit-playsinline
         preload="auto"
         aria-hidden="true"
+        @loadeddata="startSplash"
         @timeupdate="softenLoop('a', $event)"
         @ended="finishLoop('a')"
-      >
-        <source
-          src="/splash-ibiza.mp4"
-          type="video/mp4"
-        >
-      </video>
+      />
       <video
         ref="videoB"
         class="splash-video"
         :class="{ 'is-visible': visible === 'b' }"
+        src="/splash-ibiza.mp4"
         muted
         playsinline
+        webkit-playsinline
         preload="auto"
         aria-hidden="true"
         @timeupdate="softenLoop('b', $event)"
         @ended="finishLoop('b')"
-      >
-        <source
-          src="/splash-ibiza.mp4"
-          type="video/mp4"
-        >
-      </video>
+      />
       <div
         class="splash-veil"
         aria-hidden="true"

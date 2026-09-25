@@ -15,10 +15,7 @@ const {
 } = useGlobeGallery()
 
 const isInteractive = computed(() => barePath(route.path) === '/gallery')
-const showSphere = computed(() => {
-  const path = barePath(route.path)
-  return path === '/' || path === '/gallery'
-})
+const showSphere = computed(() => barePath(route.path) === '/gallery')
 
 watch(() => route.path, (path) => {
   if (barePath(path) === '/gallery') initFromSplash()
@@ -39,7 +36,7 @@ onMounted(() => {
   >
     <!-- Hide the 3D sphere off /gallery so it can't stack above page content (RSVP form, etc.) -->
     <DomeGallery
-      v-show="showSphere"
+      v-if="showSphere"
       :images="GALLERY_IMAGES"
       overlay-blur-color="#072a66"
       :auto-spin="true"
