@@ -173,6 +173,12 @@ onBeforeUnmount(() => {
   margin-top: 4rem;
 }
 
+@media (max-width: 639px) {
+  .invite {
+    margin-top: 1.25rem;
+  }
+}
+
 .invite-stage {
   position: relative;
   display: flex;

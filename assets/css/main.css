@@ -38,7 +38,9 @@ body {
 .page-shell {
   position: relative;
   min-height: 100dvh;
-  overflow-x: hidden;
+  /* clip, not hidden: hidden turns the page into a scroll box and iOS
+     then stops short, so the last line of a form sits under the edge. */
+  overflow-x: clip;
   background: var(--cobalt-deep);
 }
 

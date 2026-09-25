@@ -27,6 +27,7 @@ export default defineNuxtConfig({
       name: 'page',
     },
     head: {
+      viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
       title: 'La Vida Loca',
       meta: [
         {

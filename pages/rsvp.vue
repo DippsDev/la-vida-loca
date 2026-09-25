@@ -100,7 +100,7 @@ async function onSubmit() {
     </svg>
     <SiteNavbar />
 
-    <main class="rsvp-main relative z-10 mx-auto flex min-h-screen max-w-lg flex-col px-5 pb-16 pt-28 sm:px-6 sm:pb-14">
+    <main class="rsvp-main relative z-10 mx-auto flex max-w-lg flex-col px-5 pt-24 sm:min-h-dvh sm:px-6 sm:pt-28">
       <p class="mb-5 text-center text-xs font-medium uppercase tracking-[0.22em] text-cream/90">
         Saturday · Private villa · By invitation
       </p>
@@ -242,7 +242,18 @@ async function onSubmit() {
 }
 
 .rsvp-main {
-  justify-content: safe center;
+  justify-content: flex-start;
+  min-height: 100dvh;
+  /* Room to scroll Send clear of the iPhone home indicator and Safari bar. */
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+  scroll-padding-bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 640px) {
+  .rsvp-main {
+    justify-content: safe center;
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .notebook {
@@ -281,7 +292,7 @@ async function onSubmit() {
 .notebook__sheet {
   position: relative;
   z-index: 2;
-  padding: 1.35rem 1.35rem 0.85rem;
+  padding: 1.35rem 1.15rem 1.35rem;
 }
 
 .notebook__script {
@@ -348,9 +359,13 @@ async function onSubmit() {
   margin: 0;
 }
 
-.rule--end {
+.rule.rule--end {
   justify-content: flex-end;
-  padding-bottom: 0.1rem;
+  height: auto;
+  min-height: 2.75rem;
+  /* Caveat draws past the button box. Keep the swash and underline inside the paper. */
+  padding: 0.55rem 2.6rem 1.35rem 0.4rem;
+  overflow: visible;
 }
 
 .rule__label {
@@ -425,18 +440,20 @@ async function onSubmit() {
 
 .send {
   margin: 0;
-  padding: 0 0 0.15rem;
+  padding: 0.15rem 0.45rem 0.55rem;
   border: 0;
   background: transparent;
   color: #5c2c12;
   font-family: Caveat, cursive;
   font-size: 2rem;
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.35;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.18rem;
   cursor: pointer;
+  overflow: visible;
+  scroll-margin-bottom: calc(2.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .send:disabled {
