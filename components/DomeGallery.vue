@@ -935,11 +935,13 @@ function closeEnlarge() {
   })
 }
 
+const tileRadius = ref(props.imageBorderRadius)
+
 const rootStyle = computed(() => ({
   '--segments-x': props.segments,
   '--segments-y': props.segments,
   '--overlay-blur-color': props.overlayBlurColor,
-  '--tile-radius': props.imageBorderRadius,
+  '--tile-radius': tileRadius.value,
   '--enlarge-radius': props.openedImageBorderRadius,
   '--image-filter': props.grayscale ? 'grayscale(1)' : 'none',
 }))
@@ -996,7 +998,8 @@ onMounted(() => {
     root.style.setProperty('--radius', `${lockedRadiusRef.value}px`)
     root.style.setProperty('--viewer-pad', `${viewerPad}px`)
     root.style.setProperty('--overlay-blur-color', props.overlayBlurColor)
-    root.style.setProperty('--tile-radius', w < 768 ? '22px' : props.imageBorderRadius)
+    // Phone tiles are about 90px. A 30px corner turns them into circles.
+    tileRadius.value = w < 768 ? '8px' : props.imageBorderRadius
     root.style.setProperty('--enlarge-radius', props.openedImageBorderRadius)
     root.style.setProperty('--image-filter', props.grayscale ? 'grayscale(1)' : 'none')
     applyTransform(rotationRef.value.x, liveSpinY())
