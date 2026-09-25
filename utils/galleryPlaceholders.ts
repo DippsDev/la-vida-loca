@@ -40,8 +40,14 @@ export const GLOBE_PLACEHOLDER_IMAGES: ImageItem[] = [
 
 export const GALLERY_IMAGES: ImageItem[] = [...GLOBE_PLACEHOLDER_IMAGES]
 
+/** Sphere tiles are a few hundred pixels wide. Full photos stay for the enlarged view. */
+export function globeTileSrc(src: string) {
+  if (!/^\/gallery\/[^/]+\.jpe?g(\?|$)/i.test(src)) return src
+  return src.replace('/gallery/', '/gallery/tiles/')
+}
+
 export const GLOBE_TILE_SOURCES = GLOBE_PLACEHOLDER_IMAGES.flatMap((item) => {
-  if (typeof item === 'string') return /\.(mp4|webm|ogg)(\?|$)/i.test(item) ? [] : [item]
+  if (typeof item === 'string') return /\.(mp4|webm|ogg)(\?|$)/i.test(item) ? [] : [globeTileSrc(item)]
   if (item.type === 'video' || /\.(mp4|webm|ogg)(\?|$)/i.test(item.src)) return []
-  return [item.src]
+  return [globeTileSrc(item.src)]
 })

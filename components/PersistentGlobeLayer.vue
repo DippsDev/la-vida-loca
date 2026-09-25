@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { GALLERY_IMAGES, useGlobeGallery } from '~/composables/useGlobeGallery'
+import { GALLERY_IMAGES, GLOBE_TILE_SOURCES, useGlobeGallery } from '~/composables/useGlobeGallery'
 
 const route = useRoute()
 
@@ -15,7 +15,42 @@ const {
 } = useGlobeGallery()
 
 const isInteractive = computed(() => barePath(route.path) === '/gallery')
-const showSphere = computed(() => barePath(route.path) === '/gallery')
+const playVideos = ref(false)
+let videoTimer: number | undefined
+
+watch(isInteractive, (on) => {
+  if (!import.meta.client) {
+    playVideos.value = on
+    return
+  }
+  window.clearTimeout(videoTimer)
+  if (!on) {
+    playVideos.value = false
+    return
+  }
+  // Let the splash fade finish before the clips start decoding.
+  videoTimer = window.setTimeout(() => {
+    playVideos.value = true
+  }, 240)
+}, { immediate: true })
+
+const showSphere = computed(() => {
+  const path = barePath(route.path)
+  return path === '/' || path === '/gallery'
+})
+
+useHead({
+  link: computed(() => {
+    const path = barePath(route.path)
+    if (path !== '/' && path !== '/gallery') return []
+    return GLOBE_TILE_SOURCES.map(href => ({
+      rel: 'preload' as const,
+      as: 'image' as const,
+      href,
+      fetchpriority: 'high' as const,
+    }))
+  }),
+})
 
 watch(() => route.path, (path) => {
   if (barePath(path) === '/gallery') initFromSplash()
@@ -32,7 +67,8 @@ onMounted(() => {
   <div
     class="persistent-globe fixed inset-0 z-0 bg-[#072a66]"
     :class="{ 'persistent-globe--interactive': isInteractive }"
-    aria-hidden="false"
+    :inert="!isInteractive || undefined"
+    :aria-hidden="isInteractive ? 'false' : 'true'"
   >
     <!-- Hide the 3D sphere off /gallery so it can't stack above page content (RSVP form, etc.) -->
     <DomeGallery
@@ -42,6 +78,7 @@ onMounted(() => {
       :auto-spin="true"
       :auto-spin-speed-deg="4.8"
       :auto-spin-delay-ms="0"
+      :play-videos="playVideos"
       @ready="liftVeil"
     />
 

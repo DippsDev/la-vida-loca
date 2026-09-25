@@ -18,6 +18,7 @@ async function onSubmit() {
 
   try {
     await auth.loginWithUsername(username.value, pin.value)
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     await navigateTo('/admin')
   }
   catch (error) {
@@ -56,7 +57,7 @@ async function onSubmit() {
             name="username"
             required
             autocomplete="username"
-            class="mt-1.5 w-full border border-cobalt-deep/20 bg-white px-3 py-2.5 text-sm text-ink outline-none transition focus:border-cobalt-deep"
+            class="mt-1.5 w-full border border-cobalt-deep/20 bg-white px-3 py-2.5 text-base text-ink outline-none transition focus:border-cobalt-deep"
           >
         </label>
 
@@ -68,7 +69,7 @@ async function onSubmit() {
             name="pin"
             required
             autocomplete="current-password"
-            class="mt-1.5 w-full border border-cobalt-deep/20 bg-white px-3 py-2.5 text-sm text-ink outline-none transition focus:border-cobalt-deep"
+            class="mt-1.5 w-full border border-cobalt-deep/20 bg-white px-3 py-2.5 text-base text-ink outline-none transition focus:border-cobalt-deep"
           >
         </label>
 

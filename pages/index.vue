@@ -14,12 +14,16 @@ function preloadGallery() {
     const img = new Image()
     img.decoding = 'async'
     img.src = src
+    void img.decode().catch(() => {})
   })
 }
+
+const pageTransition = useState('page-transition', () => 'page')
 
 function enterSite() {
   if (exiting.value) return
   exiting.value = true
+  pageTransition.value = 'splash-leave'
 
   try {
     sessionStorage.setItem('loca-from-splash', '1')
@@ -28,7 +32,6 @@ function enterSite() {
     // Private mode / blocked storage — home still works without the enter cue.
   }
 
-  preloadGallery()
   return navigateTo('/gallery')
 }
 
@@ -64,7 +67,7 @@ onMounted(() => {
 
 <style scoped>
 .splash-shell {
-  transition: opacity 280ms ease;
+  transition: opacity 200ms ease;
 }
 
 .splash-copy {

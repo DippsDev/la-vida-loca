@@ -1,5 +1,5 @@
 <script lang="ts">
-import { GLOBE_PLACEHOLDER_IMAGES, type ImageItem } from '~/utils/galleryPlaceholders'
+import { GLOBE_PLACEHOLDER_IMAGES, globeTileSrc, type ImageItem } from '~/utils/galleryPlaceholders'
 
 export type { ImageItem }
 
@@ -27,6 +27,7 @@ type DomeItem = {
   sizeX: number
   sizeY: number
   src: string
+  tileSrc: string
   alt: string
   type: 'image' | 'video'
 }
@@ -74,6 +75,7 @@ const props = withDefaults(defineProps<{
   autoSpin?: boolean
   autoSpinSpeedDeg?: number
   autoSpinDelayMs?: number
+  playVideos?: boolean
 }>(), {
   images: () => DEFAULT_IMAGES,
   fit: DEFAULTS.fit,
@@ -95,6 +97,7 @@ const props = withDefaults(defineProps<{
   autoSpin: true,
   autoSpinSpeedDeg: DEFAULTS.autoSpinSpeedDeg,
   autoSpinDelayMs: 600,
+  playVideos: true,
 })
 
 const emit = defineEmits<{
@@ -205,7 +208,7 @@ function buildItems(pool: MediaEntry[], seg: number): DomeItem[] {
 
   const totalSlots = coords.length
   if (pool.length === 0) {
-    return coords.map(c => ({ ...c, src: '', alt: '', type: 'image' as const }))
+    return coords.map(c => ({ ...c, src: '', tileSrc: '', alt: '', type: 'image' as const }))
   }
 
   const images = pool.filter(item => item.type !== 'video')
@@ -225,6 +228,7 @@ function buildItems(pool: MediaEntry[], seg: number): DomeItem[] {
   return coords.map((c, i) => ({
     ...c,
     src: usedImages[i].src,
+    tileSrc: usedImages[i].type === 'image' ? globeTileSrc(usedImages[i].src) : usedImages[i].src,
     alt: usedImages[i].alt,
     type: usedImages[i].type,
   }))
@@ -324,11 +328,28 @@ function preloadTileImages() {
     seen.add(item.src)
     const img = new Image()
     img.decoding = 'async'
-    img.src = item.src
+    img.src = globeTileSrc(item.src)
+    void img.decode().catch(() => {})
   }
 }
 
 watch(tileImages, preloadTileImages, { immediate: true })
+
+watch(() => props.playVideos, (play) => {
+  if (!play || !import.meta.client) return
+  nextTick(() => {
+    rootRef.value?.querySelectorAll('video').forEach((node) => {
+      const video = node as HTMLVideoElement
+      const start = () => {
+        video.muted = true
+        void video.play().catch(() => {})
+      }
+      if (video.error) video.load()
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) start()
+      else video.addEventListener('loadeddata', start, { once: true })
+    })
+  })
+})
 
 function createMediaNode(entry: MediaEntry) {
   if (entry.type === 'video') {
@@ -1166,17 +1187,17 @@ onUnmounted(() => {
             >
               <video
                 v-if="it.type === 'video'"
-                :src="it.src"
+                :src="playVideos ? it.src : undefined"
                 muted
                 loop
                 playsinline
-                autoplay
-                preload="metadata"
+                :autoplay="playVideos"
+                :preload="playVideos ? 'auto' : 'none'"
                 :aria-label="it.alt"
               />
               <img
                 v-else
-                :src="it.src"
+                :src="it.tileSrc"
                 draggable="false"
                 :alt="it.alt"
                 decoding="async"

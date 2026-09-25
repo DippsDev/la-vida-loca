@@ -99,9 +99,21 @@ body {
   transform: none;
 }
 
+.splash-leave-enter-active,
+.splash-leave-leave-active {
+  transition: opacity 200ms ease;
+}
+
+.splash-leave-enter-from,
+.splash-leave-leave-to {
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-enter-active,
-  .page-leave-active {
+  .page-leave-active,
+  .splash-leave-enter-active,
+  .splash-leave-leave-active {
     transition-duration: 120ms;
   }
 
