@@ -21,21 +21,6 @@ export default defineNuxtConfig({
         'cache-control': 'public, max-age=31536000, immutable',
       },
     },
-    '/splash-swim-1.mp4': {
-      headers: {
-        'cache-control': 'public, max-age=31536000, immutable',
-      },
-    },
-    '/splash-swim-2.mp4': {
-      headers: {
-        'cache-control': 'public, max-age=31536000, immutable',
-      },
-    },
-    '/splash-poster-1080.jpg': {
-      headers: {
-        'cache-control': 'public, max-age=31536000, immutable',
-      },
-    },
   },
   app: {
     pageTransition: {

@@ -82,11 +82,6 @@ onMounted(() => {
   <div class="relative min-h-screen bg-cobalt-deep">
     <SiteNavbar />
 
-    <div
-      class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgb(11_61_145/0.55),transparent_55%),linear-gradient(to_top,rgb(7_42_102)_0%,transparent_50%)]"
-      aria-hidden="true"
-    />
-
     <main class="relative z-10 mx-auto flex min-h-screen max-w-lg flex-col px-5 pb-16 pt-28 sm:px-6 lg:max-w-5xl">
       <p class="mx-auto w-full max-w-lg text-center text-xs font-medium uppercase tracking-[0.22em] text-cream/90">
         Your invitation

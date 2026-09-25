@@ -31,11 +31,6 @@ async function onSubmit() {
 
 <template>
   <div class="relative min-h-screen overflow-hidden bg-cobalt-deep">
-    <div
-      class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgb(11_61_145/0.55),transparent_55%),linear-gradient(to_top,rgb(7_42_102)_0%,transparent_55%)]"
-      aria-hidden="true"
-    />
-
     <main class="relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
       <div class="mb-8 text-center text-cream">
         <p class="font-script text-4xl">

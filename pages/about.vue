@@ -6,11 +6,6 @@ useHead({ title: 'About · La Vida Loca' })
   <div class="relative min-h-screen overflow-hidden bg-cobalt-deep">
     <SiteNavbar />
 
-    <div
-      class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_15%,rgb(11_61_145/0.55),transparent_55%),linear-gradient(to_top,rgb(7_42_102)_0%,transparent_50%)]"
-      aria-hidden="true"
-    />
-
     <main class="relative z-10 mx-auto max-w-2xl px-5 pb-20 pt-28 sm:px-8 sm:pt-32">
       <p class="text-center text-xs font-medium uppercase tracking-[0.22em] text-cream/80">
         About the experience
