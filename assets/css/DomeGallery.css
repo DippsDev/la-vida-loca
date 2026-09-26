@@ -460,8 +460,6 @@ main.sphere-main {
 }
 
 @media (max-width: 767px) {
-  /* A tall phone sits outside the desktop vignette, so the top row was
-     fading to solid blue and reading as a hard crop. */
   .overlay {
     background-image: none;
   }
@@ -472,8 +470,13 @@ main.sphere-main {
     backdrop-filter: none;
   }
 
-  .edge-fade--top {
-    display: none;
+  .edge-fade {
+    height: 280px;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      var(--overlay-blur-color, #120F17) 72%
+    );
   }
 }
 
