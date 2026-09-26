@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 639px) {
   .invite {
-    margin-top: 2.75rem;
+    margin-top: 2rem;
   }
 }
 
@@ -360,11 +360,11 @@ onBeforeUnmount(() => {
 
 @media (max-width: 639px) {
   .envelope__seal {
-    margin-bottom: -0.55rem;
+    margin-bottom: 0.15rem;
   }
 
   .envelope__mark {
-    bottom: 5%;
+    bottom: 2%;
   }
 }
 

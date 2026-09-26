@@ -48,7 +48,9 @@ main.sphere-main {
   .stage {
     perspective: calc(var(--radius) * 1.2);
     perspective-origin: 50% 50%;
-    transform: translateY(3.5vh);
+    /* paint containment would clip the top row once the sphere shifts down. */
+    contain: layout size;
+    transform: translateY(5vh);
   }
 }
 
@@ -93,10 +95,6 @@ main.sphere-main {
     var(--overlay-blur-color, #120F17) 88%
   );
   backdrop-filter: none;
-}
-
-.sphere-root[data-ready='true'] .overlay--blur {
-  backdrop-filter: blur(3px);
 }
 
 @media (max-width: 767px),
@@ -167,8 +165,6 @@ main.sphere-main {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   pointer-events: auto;
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
 }
 
 .item__image:focus {
@@ -459,6 +455,24 @@ main.sphere-main {
 
 .edge-fade--bottom {
   bottom: 0;
+}
+
+@media (max-width: 767px) {
+  /* A tall phone sits outside the desktop vignette, so the top row was
+     fading to solid blue and reading as a hard crop. */
+  .overlay {
+    background-image: none;
+  }
+
+  .overlay--blur {
+    -webkit-mask-image: none;
+    mask-image: none;
+    backdrop-filter: none;
+  }
+
+  .edge-fade--top {
+    display: none;
+  }
 }
 
 body.dg-scroll-lock {
