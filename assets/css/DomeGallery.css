@@ -46,11 +46,12 @@ main.sphere-main {
 
 @media (max-width: 767px) {
   .stage {
-    perspective: calc(var(--radius) * 1.2);
-    perspective-origin: 50% 50%;
-    /* paint containment would clip the top row once the sphere shifts down. */
+    perspective: calc(var(--radius) * 1.25);
+    perspective-origin: 50% 42%;
+    /* paint containment would clip the top row once the sphere shifts. */
     contain: layout size;
-    transform: translateY(5vh);
+    /* Lift the sphere so the overlapping cap sits above the screen and the open rows fill the top. */
+    transform: translateY(-6vh);
   }
 }
 
@@ -131,7 +132,8 @@ main.sphere-main {
 
 @media (max-width: 767px) {
   .sphere-root {
-    --tile-inset: 12px;
+    /* A little more gutter so neighboring photos stay separate where the sphere curves. */
+    --tile-inset: 16px;
   }
 }
 

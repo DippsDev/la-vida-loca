@@ -296,7 +296,13 @@ const scrimRef = ref<HTMLElement | null>(null)
 
 const focusedElRef = ref<HTMLElement | null>(null)
 const originalTilePositionRef = ref<{ left: number; top: number; width: number; height: number } | null>(null)
-const rotationRef = ref({ x: -10, y: 0 })
+/** Phones start level. The desktop tilt shoves the upper rows forward until they pile up under the title. */
+function initialTiltX() {
+  if (!import.meta.client) return -10
+  return window.matchMedia('(max-width: 767px)').matches ? 0 : -10
+}
+
+const rotationRef = ref({ x: initialTiltX(), y: 0 })
 const startRotRef = ref({ x: 0, y: 0 })
 const startPosRef = ref<{ x: number; y: number } | null>(null)
 const draggingRef = ref(false)
@@ -973,6 +979,10 @@ onMounted(() => {
   const root = rootRef.value
   const main = mainRef.value
   if (!root || !main) return
+
+  if (window.matchMedia('(max-width: 767px)').matches) {
+    rotationRef.value = { x: 0, y: rotationRef.value.y }
+  }
 
   const ro = new ResizeObserver((entries) => {
     const cr = entries[0].contentRect
