@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.14.0",
+    "resend": "^6.30.0",
     "typescript": "^5.8.2"
   }
 }

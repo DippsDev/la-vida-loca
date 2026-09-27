@@ -325,6 +325,7 @@ grant execute on function public.release_rsvp_decision(bigint, text) to service_
 -- Queues mail after commit. Requires the rsvp-mail Edge Function secrets
 -- RESEND_API_KEY, RSVP_FROM_EMAIL (for example La Vida Loca <rsvp@yourdomain.com>),
 -- and SITE_URL (the public site, with no trailing slash).
+-- Decision emails link to SITE_URL/status?email=…
 create or replace function public.requests_queue_mail()
 returns trigger
 language plpgsql
@@ -377,3 +378,64 @@ create trigger requests_queue_mail
 after insert or update on public.requests
 for each row
 execute function public.requests_queue_mail();
+
+-- Notes left from the About page: feedback for the hosts, or a bug report.
+create table public.house_notes (
+  id bigint generated always as identity primary key,
+  kind text not null,
+  body text not null,
+  email text,
+  created_at timestamptz not null default now(),
+  constraint house_notes_kind check (kind in ('feedback', 'bug')),
+  constraint house_notes_body_len check (char_length(btrim(body)) between 1 and 1000),
+  constraint house_notes_email_format check (
+    email is null or email ~* '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'
+  )
+);
+
+create index house_notes_created_at_idx on public.house_notes (created_at desc);
+
+create or replace function public.house_notes_guard()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.kind := lower(btrim(new.kind));
+  new.body := btrim(new.body);
+  new.email := nullif(lower(btrim(coalesce(new.email, ''))), '');
+  if tg_op = 'INSERT' then
+    new.created_at := pg_catalog.now();
+  else
+    new.id := old.id;
+    new.created_at := old.created_at;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.house_notes_guard() from public, anon, authenticated;
+
+create trigger house_notes_guard
+before insert or update on public.house_notes
+for each row
+execute function public.house_notes_guard();
+
+alter table public.house_notes enable row level security;
+
+create policy house_notes_insert
+  on public.house_notes
+  for insert
+  to anon, authenticated
+  with check (kind in ('feedback', 'bug'));
+
+create policy house_notes_select
+  on public.house_notes
+  for select
+  to anon, authenticated
+  using (true);
+
+revoke all on table public.house_notes from anon, authenticated;
+grant select, insert on public.house_notes to anon, authenticated;
+grant select, insert, update, delete on public.house_notes to service_role;
+grant usage, select on sequence public.house_notes_id_seq to anon, authenticated, service_role;

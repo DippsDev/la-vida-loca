@@ -36,6 +36,16 @@ function escapeHtml(value: string) {
     .replaceAll('"', "&quot;")
 }
 
+function statusPageLink(email: string) {
+  const url = guestStatusUrl(email)
+  if (!url) return null
+  return {
+    url,
+    text: `Open your status page: ${url}`,
+    html: `<p><a href="${escapeHtml(url)}">Open your status page</a></p>`,
+  }
+}
+
 function letter(row: RequestRow, kind: "receipt" | "decision") {
   const name = row.first_name.trim()
   const safeName = escapeHtml(name)
@@ -59,24 +69,21 @@ function letter(row: RequestRow, kind: "receipt" | "decision") {
     }
   }
 
+  const statusPage = statusPageLink(row.email)
+
   if (row.status === "APPROVED") {
-    const statusUrl = guestStatusUrl(row.email)
-    const statusLine = statusUrl
-      ? `You are accepted. Check your status on the website: ${statusUrl}`
-      : "You are accepted. Check your status on the website to see your invitation and ticket."
-    const statusHtml = statusUrl
-      ? `You are accepted. Check your status on the website: <a href="${escapeHtml(statusUrl)}">${escapeHtml(statusUrl)}</a>`
-      : "You are accepted. Check your status on the website to see your invitation and ticket."
     return {
       subject: "You are accepted — La Vida Loca",
       text: [
         `Dear ${name},`,
         "",
-        statusLine,
+        "You are accepted. Your invitation and ticket are on your status page.",
+        ...(statusPage ? ["", statusPage.text] : []),
       ].join("\n"),
       html: [
         `<p>Dear ${safeName},</p>`,
-        `<p>${statusHtml}</p>`,
+        "<p>You are accepted. Your invitation and ticket are on your status page.</p>",
+        statusPage?.html ?? "",
       ].join(""),
     }
   }
@@ -87,10 +94,12 @@ function letter(row: RequestRow, kind: "receipt" | "decision") {
       `Dear ${name},`,
       "",
       "We are sorry we cannot offer you a place at this party. Please come back for the ones still to come. We will send you word when the next gathering opens.",
+      ...(statusPage ? ["", statusPage.text] : []),
     ].join("\n"),
     html: [
       `<p>Dear ${safeName},</p>`,
       "<p>We are sorry we cannot offer you a place at this party. Please come back for the ones still to come. We will send you word when the next gathering opens.</p>",
+      statusPage?.html ?? "",
     ].join(""),
   }
 }

@@ -1,4 +1,4 @@
-import type { JoinRequest, JoinRequestInsert, JoinRequestUpdate, MinorFlag } from '~/types/request'
+import type { HouseNote, HouseNoteKind, JoinRequest, JoinRequestInsert, JoinRequestUpdate, MinorFlag } from '~/types/request'
 
 export type Database = {
   public: {
@@ -23,6 +23,20 @@ export type Database = {
           first_name?: string | null
           surname?: string | null
           age?: number
+        }
+        Relationships: []
+      }
+      house_notes: {
+        Row: HouseNote
+        Insert: {
+          kind: HouseNoteKind
+          body: string
+          email?: string | null
+        }
+        Update: {
+          kind?: HouseNoteKind
+          body?: string
+          email?: string | null
         }
         Relationships: []
       }

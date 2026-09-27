@@ -34,3 +34,13 @@ export interface MinorFlag {
   age: number
   created_at: string
 }
+
+export type HouseNoteKind = 'feedback' | 'bug'
+
+export interface HouseNote {
+  id: number
+  kind: HouseNoteKind
+  body: string
+  email: string | null
+  created_at: string
+}

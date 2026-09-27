@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import type { JoinRequest, MinorFlag, RequestStatus } from '~/types/request'
+import type { HouseNote, JoinRequest, MinorFlag, RequestStatus } from '~/types/request'
 import { createDemoMinors, createDemoRequests } from '~/utils/adminDemoData'
 
 definePageMeta({
@@ -16,6 +16,7 @@ const auth = useAdminAuth()
 const supabase = useSupabaseClient()
 const requests = ref<JoinRequest[]>([])
 const minors = ref<MinorFlag[]>([])
+const notes = ref<HouseNote[]>([])
 const filter = ref<FilterTab>('ALL')
 const query = ref('')
 const loading = ref(true)
@@ -179,6 +180,19 @@ async function fetchRequests() {
     }
     else {
       minors.value = flags.data ?? []
+    }
+
+    const desk = await supabase
+      .from('house_notes')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (desk.error) {
+      console.error(desk.error)
+      fetchError.value = 'The house desk could not be loaded. Please try again.'
+      notes.value = []
+    }
+    else {
+      notes.value = desk.data ?? []
     }
   }
 
@@ -596,6 +610,44 @@ onUnmounted(() => {
           {{ searching ? 'No guest matches that search.' : 'No requests in this view.' }}
         </li>
       </ul>
+
+      <section
+        v-if="!loading && !demoMode"
+        class="mt-10"
+      >
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-cobalt-deep/70">
+          House desk
+        </h2>
+        <p class="mt-2 text-sm text-cobalt-deep/60">
+          Feedback and bug reports left on the About page.
+        </p>
+        <ul class="mt-3 divide-y divide-cobalt-deep/10 overflow-hidden rounded-sm bg-white">
+          <li
+            v-for="note in notes"
+            :key="note.id"
+            class="px-4 py-4"
+          >
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-cobalt-deep/55">
+              {{ note.kind === 'bug' ? 'Bug report' : 'Feedback' }} · {{ formatDate(note.created_at) }}
+            </p>
+            <p class="mt-1.5 text-sm leading-relaxed text-ink">
+              {{ note.body }}
+            </p>
+            <p
+              v-if="note.email"
+              class="mt-1 break-all text-sm text-ink/60"
+            >
+              {{ note.email }}
+            </p>
+          </li>
+          <li
+            v-if="!notes.length"
+            class="px-4 py-8 text-center text-sm text-cobalt-deep/50"
+          >
+            No notes yet.
+          </li>
+        </ul>
+      </section>
     </div>
   </div>
 </template>
