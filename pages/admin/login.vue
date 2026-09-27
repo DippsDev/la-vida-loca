@@ -34,9 +34,11 @@ async function onSubmit() {
   <div class="relative min-h-screen overflow-hidden bg-cobalt-deep">
     <main class="relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
       <div class="mb-8 text-center text-cream">
-        <p class="font-script text-4xl">
-          La Vida Loca
-        </p>
+        <img
+          src="/logo-l.png"
+          alt="La Vida Loca"
+          class="mx-auto h-24 w-24 object-contain mix-blend-lighten"
+        >
         <h1 class="mt-2 font-display text-2xl font-bold tracking-wide">
           Admin sign in
         </h1>

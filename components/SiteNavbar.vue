@@ -88,9 +88,11 @@ onBeforeUnmount(() => {
         to="/gallery"
         class="group flex flex-col leading-none"
       >
-        <span class="font-script text-4xl leading-none text-cream transition group-hover:text-white sm:text-5xl">
-          La Vida Loca
-        </span>
+        <img
+          src="/logo-l.png"
+          alt="La Vida Loca"
+          class="nav-logo -my-4 h-20 w-20 object-contain sm:-my-5 sm:h-24 sm:w-24"
+        >
       </NuxtLink>
 
       <!-- Desktop links -->
@@ -160,9 +162,11 @@ onBeforeUnmount(() => {
               class="group flex flex-col leading-none"
               @click="closeMenu"
             >
-              <span class="font-script text-4xl leading-none text-cream transition group-hover:text-white sm:text-5xl">
-                La Vida Loca
-              </span>
+              <img
+                src="/logo-l.png"
+                alt="La Vida Loca"
+                class="nav-logo -my-4 h-20 w-20 object-contain sm:-my-5 sm:h-24 sm:w-24"
+              >
             </NuxtLink>
 
             <button
@@ -210,6 +214,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.nav-logo {
+  mix-blend-mode: lighten;
+}
+
 .menu-ping {
   position: absolute;
   inset: 1px;

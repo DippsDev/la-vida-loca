@@ -328,9 +328,11 @@ onUnmounted(() => {
     <header class="bg-cobalt-deep px-4 py-6 text-cream sm:px-6 sm:py-8">
       <div class="mx-auto flex max-w-5xl flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
         <div class="min-w-0">
-          <p class="font-script text-4xl leading-none text-white sm:text-5xl">
-            La Vida Loca
-          </p>
+          <img
+            src="/logo-l.png"
+            alt="La Vida Loca"
+            class="-my-4 h-20 w-20 object-contain mix-blend-lighten sm:-my-5 sm:h-24 sm:w-24"
+          >
           <h1 class="mt-1 font-display text-2xl font-extrabold tracking-[0.1em] sm:text-3xl">
             Admin
           </h1>

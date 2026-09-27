@@ -240,7 +240,7 @@ async function sendNote() {
         <img
           src="/logo-l.png"
           alt="La Vida Loca"
-          class="mx-auto mt-10 h-36 w-36"
+          class="mx-auto mt-10 h-36 w-36 object-contain mix-blend-lighten"
         >
       </div>
     </footer>
