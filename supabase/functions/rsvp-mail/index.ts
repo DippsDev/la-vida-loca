@@ -1,12 +1,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import { Resend } from "resend"
 
-// Keep in step with utils/partyDetails.ts. Shown only on an acceptance.
-const party = {
-  day: "Saturday",
-  arrival: "from four in the afternoon",
-  place: "Private villa",
-  evening: "A private evening by the pool. The house is closed to anyone who is not on this ticket.",
-  idCheck: "Bring photo identification in the name on this ticket. Hosts will check that it is you, and that your age matches this invitation.",
+function senderAddress(raw: string) {
+  const address = raw.trim()
+  if (address.includes("<")) return address
+  return `La Vida Loca <${address}>`
+}
+
+function guestStatusUrl(email: string) {
+  const site = (Deno.env.get("SITE_URL") ?? "").replace(/\/$/, "")
+  if (!site) return ""
+  return `${site}/status?email=${encodeURIComponent(email)}`
 }
 
 type RequestRow = {
@@ -56,26 +60,23 @@ function letter(row: RequestRow, kind: "receipt" | "decision") {
   }
 
   if (row.status === "APPROVED") {
+    const statusUrl = guestStatusUrl(row.email)
+    const statusLine = statusUrl
+      ? `You are accepted. Check your status on the website: ${statusUrl}`
+      : "You are accepted. Check your status on the website to see your invitation and ticket."
+    const statusHtml = statusUrl
+      ? `You are accepted. Check your status on the website: <a href="${escapeHtml(statusUrl)}">${escapeHtml(statusUrl)}</a>`
+      : "You are accepted. Check your status on the website to see your invitation and ticket."
     return {
       subject: "You are accepted — La Vida Loca",
       text: [
         `Dear ${name},`,
         "",
-        "You are accepted.",
-        "",
-        `${party.day}, ${party.arrival}. ${party.place}.`,
-        party.evening,
-        party.idCheck,
-        "",
-        `Your ticket code is ${row.ticket_code}.`,
+        statusLine,
       ].join("\n"),
       html: [
         `<p>Dear ${safeName},</p>`,
-        "<p>You are accepted.</p>",
-        `<p>${escapeHtml(party.day)}, ${escapeHtml(party.arrival)}. ${escapeHtml(party.place)}.</p>`,
-        `<p>${escapeHtml(party.evening)}</p>`,
-        `<p>${escapeHtml(party.idCheck)}</p>`,
-        `<p>Your ticket code is <strong>${safeCode}</strong>.</p>`,
+        `<p>${statusHtml}</p>`,
       ].join(""),
     }
   }
@@ -178,23 +179,17 @@ Deno.serve(async (req) => {
     if (claimed !== true) return json({ skipped: true })
 
     const message = letter(row, kind)
-    const sent = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: [row.email],
-        subject: message.subject,
-        html: message.html,
-        text: message.text,
-      }),
+    const resend = new Resend(apiKey)
+    const { error: sendError } = await resend.emails.send({
+      from: senderAddress(from),
+      to: [row.email],
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
     })
 
-    if (!sent.ok) {
-      console.error("Resend failed", sent.status, await sent.text())
+    if (sendError) {
+      console.error("Resend failed", sendError)
       if (kind === "receipt") {
         await supabaseFetch("/rest/v1/rpc/release_rsvp_receipt", {
           method: "POST",

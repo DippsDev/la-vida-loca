@@ -26,15 +26,16 @@ const ageYears = computed(() => {
 
 const underage = computed(() => ageYears.value !== null && ageYears.value >= 1 && ageYears.value < 18)
 
-const ageOk = computed(() => ageYears.value !== null && ageYears.value >= 18 && ageYears.value <= 120)
+const ageEntered = computed(() => ageYears.value !== null && ageYears.value >= 1 && ageYears.value <= 120)
+
+const minorRejected = ref(false)
 
 const canSubmit = computed(
   () => name.value.trim().length > 0
     && surname.value.trim().length > 0
     && emailOk.value
     && phoneDigits.value.length >= 7
-    && ageOk.value
-    && !emailFlagged.value
+    && ageEntered.value
     && !submitting.value,
 )
 
@@ -84,19 +85,8 @@ async function flagMinor() {
   emailFlagged.value = true
 }
 
-function onAgeBlur() {
-  if (age.value.trim().length >= 1 && underage.value) void flagMinor()
-}
-
-function onEmailBlur() {
-  void emailIsFlagged()
-}
-
-watch([age, email], () => {
-  emailFlagged.value = flaggedEmails.has(normalizedEmail())
-  if (!underage.value || !emailOk.value) return
-  if (age.value.trim().length < 2) return
-  void flagMinor()
+watch(age, () => {
+  if (!underage.value) minorRejected.value = false
 })
 
 async function emailIsFlagged() {
@@ -120,8 +110,10 @@ async function emailIsFlagged() {
 
 async function onSubmit() {
   errorMsg.value = ''
+  minorRejected.value = false
 
   if (underage.value) {
+    minorRejected.value = true
     await flagMinor()
     return
   }
@@ -237,7 +229,6 @@ async function onSubmit() {
                 inputmode="email"
                 class="rule__write"
                 placeholder="you@email.com"
-                @blur="onEmailBlur"
               >
             </label>
 
@@ -264,23 +255,15 @@ async function onSubmit() {
                 maxlength="3"
                 class="rule__write"
                 placeholder="years"
-                @blur="onAgeBlur"
               >
             </label>
 
             <p
-              v-if="underage"
+              v-if="minorRejected"
               class="notebook__error"
               role="alert"
             >
               Anyone under the age of 18 will automatically be rejected. ID WILL BE REQUIRED AT THE DOOR
-            </p>
-            <p
-              v-else-if="emailFlagged"
-              class="notebook__error"
-              role="alert"
-            >
-              This email is flagged as a minor. A host has to clear it before you can send a request.
             </p>
 
             <label class="extra">

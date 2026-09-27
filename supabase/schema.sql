@@ -323,7 +323,8 @@ grant execute on function public.claim_rsvp_decision(bigint, text) to service_ro
 grant execute on function public.release_rsvp_decision(bigint, text) to service_role;
 
 -- Queues mail after commit. Requires the rsvp-mail Edge Function secrets
--- RESEND_API_KEY and RSVP_FROM_EMAIL (for example La Vida Loca <rsvp@yourdomain.com>).
+-- RESEND_API_KEY, RSVP_FROM_EMAIL (for example La Vida Loca <rsvp@yourdomain.com>),
+-- and SITE_URL (the public site, with no trailing slash).
 create or replace function public.requests_queue_mail()
 returns trigger
 language plpgsql
