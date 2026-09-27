@@ -11,17 +11,22 @@ const age = ref('')
 const extra = ref('')
 const submitting = ref(false)
 const errorMsg = ref('')
+const emailFlagged = ref(false)
 const invite = ref<{ send: () => Promise<void> } | null>(null)
+const flaggedEmails = new Set<string>()
 
 const phoneDigits = computed(() => phone.value.replace(/\D/g, ''))
 
 const emailOk = computed(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim()))
 
-const ageOk = computed(() => {
-  if (!/^\d{1,3}$/.test(age.value.trim())) return false
-  const years = Number(age.value.trim())
-  return years >= 1 && years <= 120
+const ageYears = computed(() => {
+  if (!/^\d{1,3}$/.test(age.value.trim())) return null
+  return Number(age.value.trim())
 })
+
+const underage = computed(() => ageYears.value !== null && ageYears.value >= 1 && ageYears.value < 18)
+
+const ageOk = computed(() => ageYears.value !== null && ageYears.value >= 18 && ageYears.value <= 120)
 
 const canSubmit = computed(
   () => name.value.trim().length > 0
@@ -29,6 +34,7 @@ const canSubmit = computed(
     && emailOk.value
     && phoneDigits.value.length >= 7
     && ageOk.value
+    && !emailFlagged.value
     && !submitting.value,
 )
 
@@ -40,17 +46,90 @@ function requestErrorMessage(error: { code?: string, message?: string, details?:
   if (error.code === '23505' && text.includes('requests_phone_digits_idx')) {
     return 'This phone number already has a request.'
   }
+  if (error.code === 'P0001' && text.includes('minor_flag')) {
+    return 'This email is flagged as a minor. A host has to clear it before you can send a request.'
+  }
   if (error.code === '23514') {
     return 'Please check your name, email, phone number, and age.'
   }
   return 'We could not send your letter. Please try again.'
 }
 
+function normalizedEmail() {
+  return email.value.trim().toLowerCase()
+}
+
+async function flagMinor() {
+  if (!underage.value || !emailOk.value || ageYears.value === null || !supabase) return
+  const address = normalizedEmail()
+  if (flaggedEmails.has(address)) {
+    emailFlagged.value = true
+    return
+  }
+
+  const { error } = await supabase.from('minor_flags').upsert({
+    email: address,
+    first_name: name.value.trim() || null,
+    surname: surname.value.trim() || null,
+    age: ageYears.value,
+  }, { onConflict: 'email' })
+
+  if (error) {
+    console.error(error)
+    errorMsg.value = 'We could not record this age check. Please try again.'
+    return
+  }
+
+  flaggedEmails.add(address)
+  emailFlagged.value = true
+}
+
+function onAgeBlur() {
+  if (age.value.trim().length >= 1 && underage.value) void flagMinor()
+}
+
+function onEmailBlur() {
+  void emailIsFlagged()
+}
+
+watch([age, email], () => {
+  emailFlagged.value = flaggedEmails.has(normalizedEmail())
+  if (!underage.value || !emailOk.value) return
+  if (age.value.trim().length < 2) return
+  void flagMinor()
+})
+
+async function emailIsFlagged() {
+  if (!emailOk.value || !supabase) return false
+  const address = normalizedEmail()
+  if (flaggedEmails.has(address)) return true
+  const { data, error } = await supabase
+    .from('minor_flags')
+    .select('email')
+    .eq('email', address)
+    .maybeSingle()
+  if (error) {
+    console.error(error)
+    return false
+  }
+  if (!data) return false
+  flaggedEmails.add(address)
+  emailFlagged.value = true
+  return true
+}
+
 async function onSubmit() {
   errorMsg.value = ''
 
+  if (underage.value) {
+    await flagMinor()
+    return
+  }
+
   if (!canSubmit.value) {
-    errorMsg.value = 'Add your name, surname, email, phone number, and age.'
+    errorMsg.value = emailFlagged.value
+      ? 'This email is flagged as a minor. A host has to clear it before you can send a request.'
+      : 'Add your name, surname, email, phone number, and age.'
     return
   }
 
@@ -61,6 +140,12 @@ async function onSubmit() {
   }
 
   submitting.value = true
+
+  if (await emailIsFlagged()) {
+    submitting.value = false
+    errorMsg.value = 'This email is flagged as a minor. A host has to clear it before you can send a request.'
+    return
+  }
 
   if (!supabase) {
     submitting.value = false
@@ -152,6 +237,7 @@ async function onSubmit() {
                 inputmode="email"
                 class="rule__write"
                 placeholder="you@email.com"
+                @blur="onEmailBlur"
               >
             </label>
 
@@ -164,7 +250,7 @@ async function onSubmit() {
                 autocomplete="tel"
                 inputmode="tel"
                 class="rule__write"
-                placeholder="+267 71 234 567"
+                placeholder="72846159"
               >
             </label>
 
@@ -178,8 +264,24 @@ async function onSubmit() {
                 maxlength="3"
                 class="rule__write"
                 placeholder="years"
+                @blur="onAgeBlur"
               >
             </label>
+
+            <p
+              v-if="underage"
+              class="notebook__error"
+              role="alert"
+            >
+              Anyone under the age of 18 will automatically be rejected. ID WILL BE REQUIRED AT THE DOOR
+            </p>
+            <p
+              v-else-if="emailFlagged"
+              class="notebook__error"
+              role="alert"
+            >
+              This email is flagged as a minor. A host has to clear it before you can send a request.
+            </p>
 
             <label class="extra">
               <span class="rule__label rule__label--block">Extra info <span class="rule__optional">(optional)</span></span>

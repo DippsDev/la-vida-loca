@@ -43,6 +43,9 @@ begin
     new.first_name := btrim(new.first_name);
     new.surname := btrim(new.surname);
     new.email := lower(btrim(new.email));
+    if exists (select 1 from public.minor_flags where email = new.email) then
+      raise exception 'minor_flag' using errcode = 'P0001';
+    end if;
     new.phone := btrim(new.phone);
     new.note := nullif(btrim(coalesce(new.note, '')), '');
     new.ticket_code := 'LV-' || upper(substr(replace(pg_catalog.gen_random_uuid()::text, '-', ''), 1, 6));
@@ -111,8 +114,78 @@ grant select, insert, update on public.requests to anon, authenticated;
 grant select, insert, update, delete on public.requests to service_role;
 grant usage, select on sequence public.requests_id_seq to anon, authenticated, service_role;
 
+-- Emails entered with an age under 18. Hosts clear a row to let that guest RSVP again.
+create table public.minor_flags (
+  email text primary key,
+  first_name text,
+  surname text,
+  age smallint not null,
+  created_at timestamptz not null default now(),
+  constraint minor_flags_email_format check (email ~* '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'),
+  constraint minor_flags_age_range check (age between 1 and 17),
+  constraint minor_flags_first_name_len check (first_name is null or char_length(btrim(first_name)) between 1 and 80),
+  constraint minor_flags_surname_len check (surname is null or char_length(btrim(surname)) between 1 and 80)
+);
+
+create or replace function public.minor_flags_guard()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.email := lower(btrim(new.email));
+  new.first_name := nullif(btrim(coalesce(new.first_name, '')), '');
+  new.surname := nullif(btrim(coalesce(new.surname, '')), '');
+  if tg_op = 'INSERT' then
+    new.created_at := pg_catalog.now();
+  else
+    new.created_at := old.created_at;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.minor_flags_guard() from public, anon, authenticated;
+
+create trigger minor_flags_guard
+before insert or update on public.minor_flags
+for each row
+execute function public.minor_flags_guard();
+
+alter table public.minor_flags enable row level security;
+
+create policy minor_flags_insert
+  on public.minor_flags
+  for insert
+  to anon, authenticated
+  with check (true);
+
+create policy minor_flags_select
+  on public.minor_flags
+  for select
+  to anon, authenticated
+  using (true);
+
+create policy minor_flags_update
+  on public.minor_flags
+  for update
+  to anon, authenticated
+  using (true)
+  with check (true);
+
+create policy minor_flags_delete
+  on public.minor_flags
+  for delete
+  to anon, authenticated
+  using (true);
+
+revoke all on table public.minor_flags from anon, authenticated;
+grant select, insert, update, delete on public.minor_flags to anon, authenticated;
+grant select, insert, update, delete on public.minor_flags to service_role;
+
 -- Realtime for the admin inbox
 alter publication supabase_realtime add table public.requests;
+alter publication supabase_realtime add table public.minor_flags;
 
 -- Drop pending requests once they are older than 20 days.
 create extension if not exists pg_cron with schema pg_catalog;
@@ -139,3 +212,167 @@ select cron.schedule(
   '15 * * * *',
   $$select public.clear_stale_pending_requests()$$
 );
+
+-- One receipt email per request, and one email each time the host's decision changes.
+create extension if not exists pg_net;
+
+create table public.request_mail (
+  request_id bigint primary key references public.requests (id) on delete cascade,
+  receipt_sent_at timestamptz,
+  decision_status text,
+  decision_sent_at timestamptz,
+  constraint request_mail_decision_status check (
+    decision_status is null or decision_status in ('APPROVED', 'REJECTED')
+  ),
+  constraint request_mail_decision_pair check (
+    (decision_status is null and decision_sent_at is null)
+    or (decision_status is not null and decision_sent_at is not null)
+  )
+);
+
+alter table public.request_mail enable row level security;
+
+create policy request_mail_no_client_access
+  on public.request_mail
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
+
+revoke all on table public.request_mail from public, anon, authenticated;
+grant select, insert, update, delete on public.request_mail to service_role;
+
+create or replace function public.claim_rsvp_receipt(target_id bigint)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  claimed_id bigint;
+begin
+  insert into public.request_mail (request_id, receipt_sent_at)
+  values (target_id, pg_catalog.now())
+  on conflict (request_id) do update
+    set receipt_sent_at = pg_catalog.now()
+    where public.request_mail.receipt_sent_at is null
+  returning request_id into claimed_id;
+
+  return claimed_id is not null;
+end;
+$$;
+
+create or replace function public.release_rsvp_receipt(target_id bigint)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.request_mail
+  set receipt_sent_at = null
+  where request_id = target_id;
+$$;
+
+create or replace function public.claim_rsvp_decision(target_id bigint, next_status text)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  claimed_id bigint;
+begin
+  if next_status is null or next_status not in ('APPROVED', 'REJECTED') then
+    return false;
+  end if;
+
+  insert into public.request_mail (request_id, decision_status, decision_sent_at)
+  values (target_id, next_status, pg_catalog.now())
+  on conflict (request_id) do update
+    set
+      decision_status = excluded.decision_status,
+      decision_sent_at = pg_catalog.now()
+    where public.request_mail.decision_status is distinct from excluded.decision_status
+  returning request_id into claimed_id;
+
+  return claimed_id is not null;
+end;
+$$;
+
+create or replace function public.release_rsvp_decision(target_id bigint, next_status text)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.request_mail
+  set decision_status = null,
+      decision_sent_at = null
+  where request_id = target_id
+    and decision_status = next_status;
+$$;
+
+revoke all on function public.claim_rsvp_receipt(bigint) from public, anon, authenticated;
+revoke all on function public.release_rsvp_receipt(bigint) from public, anon, authenticated;
+revoke all on function public.claim_rsvp_decision(bigint, text) from public, anon, authenticated;
+revoke all on function public.release_rsvp_decision(bigint, text) from public, anon, authenticated;
+
+grant execute on function public.claim_rsvp_receipt(bigint) to service_role;
+grant execute on function public.release_rsvp_receipt(bigint) to service_role;
+grant execute on function public.claim_rsvp_decision(bigint, text) to service_role;
+grant execute on function public.release_rsvp_decision(bigint, text) to service_role;
+
+-- Queues mail after commit. Requires the rsvp-mail Edge Function secrets
+-- RESEND_API_KEY and RSVP_FROM_EMAIL (for example La Vida Loca <rsvp@yourdomain.com>).
+create or replace function public.requests_queue_mail()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  kind text;
+  request_id bigint;
+begin
+  if tg_op = 'INSERT' then
+    kind := 'receipt';
+    request_id := new.id;
+  elsif tg_op = 'UPDATE'
+    and new.status is distinct from old.status
+    and new.status in ('APPROVED', 'REJECTED')
+  then
+    kind := 'decision';
+    request_id := new.id;
+  else
+    return new;
+  end if;
+
+  begin
+    perform net.http_post(
+      url := 'https://pynxtrdndibgcxbnaeul.supabase.co/functions/v1/rsvp-mail',
+      body := pg_catalog.jsonb_build_object(
+        'kind', kind,
+        'record', pg_catalog.jsonb_build_object('id', request_id)
+      ),
+      params := '{}'::jsonb,
+      headers := pg_catalog.jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5bnh0cmRuZGliZ2N4Ym5hZXVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNjM3NTgsImV4cCI6MjEwNTczOTc1OH0.4-kFI2n1DC0hN_fzfigT4vr_Dtx3NKbEfUB450Eooa0'
+      ),
+      timeout_milliseconds := 5000
+    );
+  exception
+    when others then
+      raise warning 'rsvp mail queue failed: %', sqlerrm;
+  end;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.requests_queue_mail() from public, anon, authenticated;
+
+create trigger requests_queue_mail
+after insert or update on public.requests
+for each row
+execute function public.requests_queue_mail();

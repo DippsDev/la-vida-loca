@@ -1,3 +1,12 @@
 {
-  "extends": "./.nuxt/tsconfig.json"
+  "extends": "./.nuxt/tsconfig.json",
+  "exclude": [
+    "dist",
+    ".data",
+    "node_modules/runtime/server",
+    "node_modules/dist/runtime/server",
+    ".nuxt/dev",
+    "supabase/functions",
+    "supabase/edge-runtime.d.ts"
+  ]
 }

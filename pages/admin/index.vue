@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import type { JoinRequest, RequestStatus } from '~/types/request'
-import { createDemoRequests } from '~/utils/adminDemoData'
+import type { JoinRequest, MinorFlag, RequestStatus } from '~/types/request'
+import { createDemoMinors, createDemoRequests } from '~/utils/adminDemoData'
 
 definePageMeta({
   ssr: false,
@@ -15,6 +15,7 @@ const route = useRoute()
 const auth = useAdminAuth()
 const supabase = useSupabaseClient()
 const requests = ref<JoinRequest[]>([])
+const minors = ref<MinorFlag[]>([])
 const filter = ref<FilterTab>('ALL')
 const query = ref('')
 const loading = ref(true)
@@ -26,6 +27,7 @@ let channel: RealtimeChannel | null = null
 function loadDemoInbox() {
   demoMode.value = true
   requests.value = createDemoRequests()
+  minors.value = createDemoMinors()
   fetchError.value = ''
 }
 
@@ -110,6 +112,30 @@ function removeLocal(id: string) {
   requests.value = requests.value.filter(r => r.id !== id)
 }
 
+function upsertMinor(row: MinorFlag) {
+  const index = minors.value.findIndex(flag => flag.email === row.email)
+  if (index === -1) {
+    minors.value = [row, ...minors.value]
+    return
+  }
+  const next = [...minors.value]
+  next[index] = row
+  minors.value = next
+}
+
+function removeMinor(email: string) {
+  minors.value = minors.value.filter(flag => flag.email !== email)
+}
+
+const visibleMinors = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return minors.value
+  return minors.value.filter((flag) => {
+    const fields = [flag.first_name, flag.surname, flag.email].filter(Boolean).join(' ').toLowerCase()
+    return fields.includes(q)
+  })
+})
+
 async function fetchRequests() {
   loading.value = true
   fetchError.value = ''
@@ -142,9 +168,53 @@ async function fetchRequests() {
   }
   else {
     requests.value = data ?? []
+    const flags = await supabase
+      .from('minor_flags')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (flags.error) {
+      console.error(flags.error)
+      fetchError.value = 'The minor flags could not be loaded. Please try again.'
+      minors.value = []
+    }
+    else {
+      minors.value = flags.data ?? []
+    }
   }
 
   loading.value = false
+}
+
+async function clearMinor(address: string) {
+  updatingId.value = address
+
+  if (demoMode.value) {
+    await new Promise(resolve => window.setTimeout(resolve, 350))
+    removeMinor(address)
+    updatingId.value = null
+    return
+  }
+
+  if (!supabase) {
+    updatingId.value = null
+    fetchError.value = 'That flag could not be cleared. Please try again.'
+    return
+  }
+
+  const { error } = await supabase
+    .from('minor_flags')
+    .delete()
+    .eq('email', address)
+
+  updatingId.value = null
+
+  if (error) {
+    console.error(error)
+    fetchError.value = 'That flag could not be cleared. Please try again.'
+    return
+  }
+
+  removeMinor(address)
 }
 
 async function setStatus(id: string, status: Extract<RequestStatus, 'APPROVED' | 'REJECTED'>) {
@@ -216,6 +286,17 @@ onMounted(async () => {
         else if (payload.eventType === 'DELETE') {
           removeLocal((payload.old as { id: string }).id)
         }
+      },
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'minor_flags' },
+      (payload) => {
+        if (payload.eventType === 'DELETE') {
+          removeMinor((payload.old as { email?: string }).email ?? '')
+          return
+        }
+        upsertMinor(payload.new as MinorFlag)
       },
     )
     .subscribe()
@@ -397,8 +478,47 @@ onUnmounted(() => {
         Loading…
       </p>
 
+      <section
+        v-if="!loading && visibleMinors.length"
+        class="mt-6"
+      >
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-reject">
+          Minor
+        </h2>
+        <ul class="mt-3 divide-y divide-cobalt-deep/10 overflow-hidden rounded-sm bg-white">
+          <li
+            v-for="flag in visibleMinors"
+            :key="flag.email"
+            class="flex flex-col gap-3.5 px-4 py-4 sm:gap-3 md:flex-row md:items-center md:justify-between"
+          >
+            <div class="min-w-0">
+              <p class="font-semibold text-cobalt-deep">
+                {{ [flag.first_name, flag.surname].filter(Boolean).join(' ') || 'Unnamed guest' }}
+              </p>
+              <p class="break-all text-sm text-ink/70">
+                {{ flag.email }}
+              </p>
+              <p class="text-sm text-ink/70">
+                Age {{ flag.age }}
+              </p>
+              <p class="mt-1 text-[11px] uppercase tracking-wider text-reject sm:text-xs">
+                MINOR · {{ formatDate(flag.created_at) }}
+              </p>
+            </div>
+            <button
+              type="button"
+              class="self-start border border-cobalt-deep px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-cobalt-deep transition hover:bg-cobalt-deep hover:text-white disabled:opacity-50"
+              :disabled="updatingId === flag.email"
+              @click="clearMinor(flag.email)"
+            >
+              Allow RSVP
+            </button>
+          </li>
+        </ul>
+      </section>
+
       <ul
-        v-else
+        v-if="!loading"
         class="mt-5 divide-y divide-cobalt-deep/10 overflow-hidden rounded-sm bg-white sm:mt-6"
       >
         <li

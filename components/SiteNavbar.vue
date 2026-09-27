@@ -3,6 +3,7 @@ const route = useRoute()
 
 const menuOpen = ref(false)
 const iconOpen = ref(false)
+const nudgeMenu = ref(false)
 
 const links = [
   { to: '/gallery', label: 'Gallery' },
@@ -25,7 +26,18 @@ function closeMenu() {
   menuOpen.value = false
 }
 
+function rememberMenu() {
+  nudgeMenu.value = false
+  try {
+    sessionStorage.setItem('loca-menu-seen', '1')
+  }
+  catch {
+    // Private mode can block storage. The nudge still stops for this view.
+  }
+}
+
 function toggleMenu() {
+  if (!menuOpen.value) rememberMenu()
   menuOpen.value = !menuOpen.value
 }
 
@@ -53,6 +65,12 @@ watch(menuOpen, async (open) => {
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
+  try {
+    nudgeMenu.value = sessionStorage.getItem('loca-menu-seen') !== '1'
+  }
+  catch {
+    nudgeMenu.value = true
+  }
 })
 
 onBeforeUnmount(() => {
@@ -96,12 +114,15 @@ onBeforeUnmount(() => {
       <!-- Mobile toggle -->
       <button
         type="button"
-        class="flex h-11 w-11 shrink-0 items-center justify-center text-cream md:hidden"
+        class="menu-toggle relative flex h-11 w-11 shrink-0 items-center justify-center text-cream md:hidden"
+        :class="{ 'is-nudge': nudgeMenu }"
         :aria-expanded="menuOpen"
         aria-controls="site-mobile-menu"
         aria-label="Open menu"
         @click="toggleMenu"
       >
+        <span class="menu-ping" aria-hidden="true" />
+        <span class="menu-ping menu-ping--late" aria-hidden="true" />
         <span class="sr-only">Open menu</span>
         <span
           class="menu-icon"
@@ -189,8 +210,38 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.menu-ping {
+  position: absolute;
+  inset: 1px;
+  border-radius: 999px;
+  border: 1.5px solid #f5f0e6;
+  box-shadow:
+    0 0 0 1px rgb(7 42 102 / 0.45),
+    0 0 16px rgb(245 240 230 / 0.35);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.menu-toggle.is-nudge .menu-ping {
+  animation: menu-ping 2.15s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.menu-toggle.is-nudge .menu-ping--late {
+  animation-delay: 0.38s;
+}
+
+.menu-toggle.is-nudge {
+  border-radius: 999px;
+  animation: menu-glow 2.15s ease-in-out infinite;
+}
+
+.menu-toggle.is-nudge .menu-icon {
+  animation: menu-pop 2.15s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
 .menu-icon {
   position: relative;
+  z-index: 1;
   display: block;
   width: 22px;
   height: 14px;
@@ -235,6 +286,85 @@ onBeforeUnmount(() => {
 .menu-icon.is-open span:nth-child(3) {
   top: 6px;
   transform: rotate(-45deg);
+}
+
+@keyframes menu-glow {
+  0%,
+  100% {
+    background-color: rgb(245 240 230 / 0.08);
+    box-shadow: 0 0 0 0 rgb(245 240 230 / 0);
+  }
+
+  32% {
+    background-color: rgb(245 240 230 / 0.28);
+    box-shadow:
+      0 0 0 7px rgb(245 240 230 / 0.34),
+      0 0 24px rgb(245 240 230 / 0.55);
+  }
+}
+
+@keyframes menu-ping {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.2;
+  }
+
+  18% {
+    transform: scale(0.86);
+    opacity: 1;
+  }
+
+  68% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@keyframes menu-pop {
+  0%,
+  24%,
+  100% {
+    transform: scale(1);
+  }
+
+  8% {
+    transform: scale(1.38);
+  }
+
+  15% {
+    transform: scale(0.9);
+  }
+
+  20% {
+    transform: scale(1.14);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-toggle.is-nudge,
+  .menu-toggle.is-nudge .menu-ping,
+  .menu-toggle.is-nudge .menu-icon {
+    animation: none;
+  }
+
+  .menu-toggle.is-nudge {
+    background-color: rgb(245 240 230 / 0.16);
+    box-shadow: 0 0 0 6px rgb(245 240 230 / 0.22);
+  }
+
+  .menu-toggle.is-nudge .menu-ping {
+    opacity: 0.85;
+    transform: none;
+  }
+
+  .menu-toggle.is-nudge .menu-ping--late {
+    display: none;
+  }
 }
 </style>
 

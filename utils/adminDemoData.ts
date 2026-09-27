@@ -1,4 +1,16 @@
-import type { JoinRequest } from '~/types/request'
+import type { JoinRequest, MinorFlag } from '~/types/request'
+
+export function createDemoMinors(): MinorFlag[] {
+  return [
+    {
+      email: 'young.guest@example.com',
+      first_name: 'Alex',
+      surname: 'Nguyen',
+      age: 17,
+      created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    },
+  ]
+}
 
 /** Placeholder inbox rows for client demos / when Supabase is offline. */
 export function createDemoRequests(): JoinRequest[] {

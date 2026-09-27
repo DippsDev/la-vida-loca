@@ -8,17 +8,13 @@ export const DEFAULT_IMAGES = GLOBE_PLACEHOLDER_IMAGES
 export const DEFAULTS = {
   fit: 0.8,
   minRadius: 600,
-  maxVerticalRotationDeg: 0,
   segments: 34,
-  dragDampening: 2,
-  dragSensitivity: 20,
   enlargeTransitionMs: 380,
   autoSpinSpeedDeg: 2,
 }
 </script>
 
 <script setup lang="ts">
-import { DragGesture } from '@use-gesture/vanilla'
 import '~/assets/css/DomeGallery.css'
 
 type DomeItem = {
@@ -62,11 +58,8 @@ const props = withDefaults(defineProps<{
   maxRadius?: number
   padFactor?: number
   overlayBlurColor?: string
-  maxVerticalRotationDeg?: number
-  dragSensitivity?: number
   enlargeTransitionMs?: number
   segments?: number
-  dragDampening?: number
   openedImageWidth?: string
   openedImageHeight?: string
   imageBorderRadius?: string
@@ -84,11 +77,8 @@ const props = withDefaults(defineProps<{
   maxRadius: Infinity,
   padFactor: 0.25,
   overlayBlurColor: '#120F17',
-  maxVerticalRotationDeg: DEFAULTS.maxVerticalRotationDeg,
-  dragSensitivity: DEFAULTS.dragSensitivity,
   enlargeTransitionMs: DEFAULTS.enlargeTransitionMs,
   segments: DEFAULTS.segments,
-  dragDampening: DEFAULTS.dragDampening,
   openedImageWidth: '400px',
   openedImageHeight: '400px',
   imageBorderRadius: '30px',
@@ -303,14 +293,8 @@ function initialTiltX() {
 }
 
 const rotationRef = ref({ x: initialTiltX(), y: 0 })
-const startRotRef = ref({ x: 0, y: 0 })
-const startPosRef = ref<{ x: number; y: number } | null>(null)
-const draggingRef = ref(false)
-const movedRef = ref(false)
-const inertiaRAF = ref<number | null>(null)
 const openingRef = ref(false)
 const openStartedAtRef = ref(0)
-const lastDragEndAt = ref(0)
 const scrollLockedRef = ref(false)
 const lockedRadiusRef = ref<number | null>(null)
 const lightboxIndex = ref(-1)
@@ -531,10 +515,8 @@ function applyTransform(xDeg: number, yDeg: number) {
 function canAutoSpin() {
   return (
     props.autoSpin
-    && !draggingRef.value
     && !focusedElRef.value
     && !openingRef.value
-    && inertiaRAF.value == null
   )
 }
 
@@ -603,24 +585,16 @@ function runSpinClock(fromY: number, velocity: number) {
   spinFrame = requestAnimationFrame(step)
 }
 
-function blendToCruise(fromVelocity: number) {
-  runSpinClock(rotationRef.value.y, fromVelocity)
-}
-
 function startAutoSpin() {
   runSpinClock(rotationRef.value.y, props.autoSpinSpeedDeg)
 }
 
-/** Resume idle spin after drag/inertia — restarts the loop if it was stopped. */
+/** Resume idle spin after a photo closes — restarts the loop if it was stopped. */
 function scheduleAutoSpinResume(delayMs = 0) {
   if (!props.autoSpin) return
   clearAutoSpinResume()
   autoSpinResumeTimer = window.setTimeout(() => {
     autoSpinResumeTimer = null
-    if (inertiaRAF.value != null) {
-      scheduleAutoSpinResume(120)
-      return
-    }
     if (!canAutoSpin() || spinFrame != null) return
     runSpinClock(rotationRef.value.y, props.autoSpinSpeedDeg)
   }, delayMs)
@@ -637,55 +611,6 @@ function unlockScroll() {
   if (rootRef.value?.getAttribute('data-enlarging') === 'true') return
   scrollLockedRef.value = false
   document.body.classList.remove('dg-scroll-lock')
-}
-
-function stopInertia() {
-  if (inertiaRAF.value) {
-    cancelAnimationFrame(inertiaRAF.value)
-    inertiaRAF.value = null
-  }
-}
-
-function startInertia(vx: number, vy: number) {
-  const MAX_V = 1.4
-  let vX = clamp(vx, -MAX_V, MAX_V) * 80
-  let vY = clamp(vy, -MAX_V, MAX_V) * 80
-  let frames = 0
-  const d = clamp(props.dragDampening ?? 0.6, 0, 1)
-  const frictionMul = 0.92 + 0.04 * d
-  // End sooner so residual micro-motion doesn't block auto-spin for seconds
-  const stopThreshold = 0.12 - 0.04 * d
-  const maxFrames = Math.round(45 + 90 * d)
-
-  const finishInertia = () => {
-    inertiaRAF.value = null
-    blendToCruise((vX / 200) * 60)
-  }
-
-  const step = () => {
-    vX *= frictionMul
-    vY *= frictionMul
-    if (Math.abs(vX) < stopThreshold && Math.abs(vY) < stopThreshold) {
-      finishInertia()
-      return
-    }
-    if (++frames > maxFrames) {
-      finishInertia()
-      return
-    }
-    const nextX = clamp(
-      rotationRef.value.x - vY / 200,
-      -props.maxVerticalRotationDeg,
-      props.maxVerticalRotationDeg,
-    )
-    const nextY = wrapAngleSigned(rotationRef.value.y + vX / 200)
-    rotationRef.value = { x: nextX, y: nextY }
-    applyTransform(nextX, nextY)
-    inertiaRAF.value = requestAnimationFrame(step)
-  }
-
-  stopInertia()
-  inertiaRAF.value = requestAnimationFrame(step)
 }
 
 function whenTransitionEnds(el: HTMLElement, property: string, ms: number, cb: () => void) {
@@ -830,18 +755,12 @@ function openItemFromElement(el: HTMLElement) {
 }
 
 function onTileClick(e: MouseEvent) {
-  if (draggingRef.value) return
-  if (movedRef.value) return
-  if (performance.now() - lastDragEndAt.value < 80) return
   if (openingRef.value) return
   openItemFromElement(e.currentTarget as HTMLElement)
 }
 
 function onTilePointerUp(e: PointerEvent) {
   if (e.pointerType !== 'touch') return
-  if (draggingRef.value) return
-  if (movedRef.value) return
-  if (performance.now() - lastDragEndAt.value < 80) return
   if (openingRef.value) return
   openItemFromElement(e.currentTarget as HTMLElement)
 }
@@ -883,7 +802,7 @@ function closeEnlarge() {
             el.style.transition = ''
             el.style.opacity = ''
             openingRef.value = false
-            if (!draggingRef.value && rootRef.value?.getAttribute('data-enlarging') !== 'true') {
+            if (rootRef.value?.getAttribute('data-enlarging') !== 'true') {
               document.body.classList.remove('dg-scroll-lock')
               scrollLockedRef.value = false
             }
@@ -977,8 +896,7 @@ const cleanupFns: Array<() => void> = []
 
 onMounted(() => {
   const root = rootRef.value
-  const main = mainRef.value
-  if (!root || !main) return
+  if (!root || !mainRef.value) return
 
   if (window.matchMedia('(max-width: 767px)').matches) {
     rotationRef.value = { x: 0, y: rotationRef.value.y }
@@ -1062,85 +980,6 @@ onMounted(() => {
     window.setTimeout(sendReady, 150)
   })
 
-  const gesture = new DragGesture(
-    main,
-    ({ event, first, last, canceled, velocity = [0, 0], direction = [0, 0], movement }) => {
-      if (focusedElRef.value) return
-
-      if (first) {
-        stopInertia()
-        freezeSpin()
-        const evt = event as PointerEvent
-        draggingRef.value = true
-        movedRef.value = false
-        startRotRef.value = { ...rotationRef.value }
-        startPosRef.value = { x: evt.clientX, y: evt.clientY }
-        return
-      }
-
-      if (!draggingRef.value || !startPosRef.value) return
-      const evt = event as PointerEvent
-      const dxTotal = evt.clientX - startPosRef.value.x
-      const dyTotal = evt.clientY - startPosRef.value.y
-      if (!movedRef.value) {
-        const dist2 = dxTotal * dxTotal + dyTotal * dyTotal
-        if (dist2 > 16) movedRef.value = true
-      }
-      const nextX = clamp(
-        startRotRef.value.x - dyTotal / props.dragSensitivity,
-        -props.maxVerticalRotationDeg,
-        props.maxVerticalRotationDeg,
-      )
-      const nextY = wrapAngleSigned(startRotRef.value.y + dxTotal / props.dragSensitivity)
-      if (rotationRef.value.x !== nextX || rotationRef.value.y !== nextY) {
-        rotationRef.value = { x: nextX, y: nextY }
-        applyTransform(nextX, nextY)
-      }
-
-      if (last || canceled) {
-        draggingRef.value = false
-        startPosRef.value = null
-
-        if (canceled) {
-          scheduleAutoSpinResume(0)
-          movedRef.value = false
-          return
-        }
-
-        let [vMagX, vMagY] = velocity
-        const [dirX, dirY] = direction
-        let vx = vMagX * dirX
-        let vy = vMagY * dirY
-        if (Math.abs(vx) < 0.001 && Math.abs(vy) < 0.001 && Array.isArray(movement)) {
-          const [mx, my] = movement
-          vx = clamp((mx / props.dragSensitivity) * 0.02, -1.2, 1.2)
-          vy = clamp((my / props.dragSensitivity) * 0.02, -1.2, 1.2)
-        }
-        if (Math.abs(vx) > 0.005 || Math.abs(vy) > 0.005) {
-          startInertia(vx, vy)
-        }
-        else {
-          scheduleAutoSpinResume(0)
-        }
-        if (movedRef.value) lastDragEndAt.value = performance.now()
-        movedRef.value = false
-      }
-    },
-    { eventOptions: { passive: true } },
-  )
-
-  // Mobile safety: if the gesture never fires `last`, clear drag so auto-spin can resume
-  const endDragIfStuck = () => {
-    if (!draggingRef.value) return
-    draggingRef.value = false
-    startPosRef.value = null
-    scheduleAutoSpinResume(0)
-  }
-  main.addEventListener('pointerup', endDragIfStuck)
-  main.addEventListener('pointercancel', endDragIfStuck)
-  main.addEventListener('touchend', endDragIfStuck)
-  main.addEventListener('touchcancel', endDragIfStuck)
-
   const onKey = (e: KeyboardEvent) => {
     if (!isEnlarged.value && e.key !== 'Escape') return
     if (e.key === 'Escape') {
@@ -1161,14 +1000,8 @@ onMounted(() => {
 
   cleanupFns.push(() => {
     ro.disconnect()
-    gesture.destroy()
     window.removeEventListener('keydown', onKey)
-    main.removeEventListener('pointerup', endDragIfStuck)
-    main.removeEventListener('pointercancel', endDragIfStuck)
-    main.removeEventListener('touchend', endDragIfStuck)
-    main.removeEventListener('touchcancel', endDragIfStuck)
     clearAutoSpinResume()
-    stopInertia()
     stopAutoSpin()
     document.body.classList.remove('dg-scroll-lock')
   })

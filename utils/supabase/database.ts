@@ -1,4 +1,4 @@
-import type { JoinRequest, JoinRequestInsert, JoinRequestUpdate } from '~/types/request'
+import type { JoinRequest, JoinRequestInsert, JoinRequestUpdate, MinorFlag } from '~/types/request'
 
 export type Database = {
   public: {
@@ -7,6 +7,23 @@ export type Database = {
         Row: JoinRequest
         Insert: JoinRequestInsert
         Update: JoinRequestUpdate
+        Relationships: []
+      }
+      minor_flags: {
+        Row: MinorFlag
+        Insert: {
+          email: string
+          first_name?: string | null
+          surname?: string | null
+          age: number
+          created_at?: string
+        }
+        Update: {
+          email?: string
+          first_name?: string | null
+          surname?: string | null
+          age?: number
+        }
         Relationships: []
       }
     }

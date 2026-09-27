@@ -26,3 +26,11 @@ export type JoinRequestInsert = {
 export type JoinRequestUpdate = {
   status?: RequestStatus
 }
+
+export interface MinorFlag {
+  email: string
+  first_name: string | null
+  surname: string | null
+  age: number
+  created_at: string
+}
